@@ -69,6 +69,48 @@ streamlit run main.py
 
 The app will open in your default web browser at `http://localhost:8501`
 
+### 🐳 Docker Installation (Recommended)
+
+For an isolated, containerized deployment that doesn't interfere with other applications:
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd mentalmath
+```
+
+2. Start the application:
+```bash
+docker-compose up -d
+```
+
+Or use the convenience script:
+```bash
+./docker-start.sh
+```
+
+3. Access the app at `http://localhost:8501`
+
+4. To stop the container:
+```bash
+docker-compose down
+```
+
+Or use:
+```bash
+./docker-stop.sh
+```
+
+**Benefits of Docker deployment:**
+- ✅ No Python installation required
+- ✅ Isolated from other applications and containers
+- ✅ Consistent environment across systems
+- ✅ Easy to update and maintain
+- ✅ Persistent data storage via volumes
+- ✅ Resource limits to prevent interference
+
+For detailed Docker usage, configuration, and troubleshooting, see [DOCKER.md](DOCKER.md).
+
 ## 📖 Usage
 
 ### Getting Started

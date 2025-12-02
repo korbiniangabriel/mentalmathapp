@@ -8,3 +8,20 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Database files
+data/*.db
+data/*.db-journal
+
+# Docker volumes and runtime
+data/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Logs
+*.log

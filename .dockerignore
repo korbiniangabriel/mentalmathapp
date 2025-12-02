@@ -1,0 +1,52 @@
+# Git files
+.git/
+.gitignore
+.gitattributes
+
+# Keep .streamlit config
+!.streamlit/
+
+# Python cache and virtual environments
+__pycache__/
+*.py[oc]
+.venv/
+venv/
+env/
+ENV/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+wheels/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Documentation (optional - include if needed in container)
+*.md
+!README.md
+
+# Test files (exclude from production image)
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Data files (mounted as volume)
+data/*.db
+data/*.db-journal
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Other
+.python-version
+*.log

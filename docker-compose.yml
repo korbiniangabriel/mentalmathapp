@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  mentalmath:
+    container_name: mentalmath-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8501:8501"  # Map host port 8501 to container port 8501
+    volumes:
+      # Persist database data between container restarts
+      - ./data:/app/data
+      # Optional: mount source code for development (comment out for production)
+      # - ./src:/app/src
+      # - ./main.py:/app/main.py
+    environment:
+      # Streamlit configuration
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - STREAMLIT_SERVER_HEADLESS=true
+      - STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+    networks:
+      - mentalmath-network
+    restart: unless-stopped
+    # Resource limits (adjust as needed)
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+networks:
+  mentalmath-network:
+    driver: bridge
+    # Isolated network for this app
+    name: mentalmath-network
