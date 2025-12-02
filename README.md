@@ -1,15 +1,15 @@
 # 🧮 Mental Math Training App
 
-A comprehensive mental math training application built with Streamlit, designed for practicing quick calculations - perfect for trading firm interview preparation and general mental math improvement.
+A comprehensive mental math training application built with Streamlit. Perfect for trading firm interview preparation and general mental math improvement.
 
 ## ✨ Features
 
-### 🎮 Multiple Game Modes
+### Game Modes
 - **Sprint Mode**: Time-limited challenge (1, 2, or 5 minutes)
 - **Marathon Mode**: Question count challenge (25, 50, or 100 questions)
-- **Targeted Practice**: Focus on your weak areas with adaptive question selection
+- **Targeted Practice**: Focus on weak areas with adaptive question selection
 
-### 📚 Question Categories
+### Question Categories
 - **Arithmetic**: Addition, subtraction, multiplication, division
 - **Percentages**: Percentage calculations, percentage change, reverse percentages
 - **Fractions**: Fraction-to-decimal conversions, decimal-to-fraction, fraction arithmetic
@@ -18,243 +18,205 @@ A comprehensive mental math training application built with Streamlit, designed 
 - **Estimation**: Quick approximations with acceptable ranges
 - **Mixed**: All question types combined
 
-### 💪 Difficulty Levels
-- **Easy**: Simple problems to build confidence
-- **Medium**: Moderate challenge for steady improvement
-- **Hard**: Complex problems for advanced training
-- **Adaptive**: Automatically adjusts based on your performance
-
-### 🏆 Gamification
-- **Combo System**: Build combos with consecutive correct answers for score multipliers
-- **Speed Bonuses**: Extra points for quick answers
+### Gamification
+- **Combo System**: Build combos with consecutive correct answers (up to 3x multiplier)
+- **Speed Bonuses**: Extra points for quick answers (up to +100 points)
 - **Achievement Badges**: 19+ badges to earn across different categories
 - **Daily Streaks**: Track consecutive days of practice
 - **Leaderboards**: Personal best scores and statistics
 
-### 📊 Analytics & Insights
-- **Performance Tracking**: Detailed statistics by category and difficulty
-- **Trend Analysis**: Visualize accuracy and speed improvements over time
-- **Weak Area Identification**: Automatically identify areas needing improvement
-- **Session Insights**: Get personalized feedback after each session
-- **Time-of-Day Analysis**: See when you perform best
+### Analytics
+- Performance tracking by category and difficulty
+- Trend analysis to visualize improvement over time
+- Weak area identification
+- Session insights with personalized feedback
 
-## 🚀 Installation
+## 🚀 Quick Start
 
-### Prerequisites
-- Python 3.13 or higher
-- pip package manager
+### Option 1: Docker (Recommended)
 
-### Setup
+Docker provides isolated deployment that doesn't interfere with other applications.
 
-1. Clone the repository:
 ```bash
-git clone <repository-url>
-cd mentalmath
-```
-
-2. Install dependencies:
-```bash
-pip install -e .
-```
-
-Or install dependencies directly:
-```bash
-pip install streamlit pandas plotly pydantic python-dateutil pytest
-```
-
-3. Run the application:
-```bash
-streamlit run main.py
-```
-
-The app will open in your default web browser at `http://localhost:8501`
-
-### 🐳 Docker Installation (Recommended)
-
-For an isolated, containerized deployment that doesn't interfere with other applications:
-
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd mentalmath
-```
-
-2. Start the application:
-```bash
+# Start the app
 docker-compose up -d
-```
 
-Or use the convenience script:
-```bash
-./docker-start.sh
-```
+# Access at http://localhost:8501
 
-3. Access the app at `http://localhost:8501`
-
-4. To stop the container:
-```bash
+# Stop the app
 docker-compose down
 ```
 
-Or use:
+**Or use the convenience scripts:**
 ```bash
+./docker-start.sh
 ./docker-stop.sh
 ```
 
-**Benefits of Docker deployment:**
+**Benefits:**
 - ✅ No Python installation required
-- ✅ Isolated from other applications and containers
-- ✅ Consistent environment across systems
-- ✅ Easy to update and maintain
-- ✅ Persistent data storage via volumes
-- ✅ Resource limits to prevent interference
+- ✅ Isolated from other applications
+- ✅ Consistent environment
+- ✅ Persistent data storage
 
-For detailed Docker usage, configuration, and troubleshooting, see [DOCKER.md](DOCKER.md).
+### Option 2: Python Installation
 
-## 📖 Usage
+**Prerequisites:** Python 3.13 or higher
 
-### Getting Started
+```bash
+# Install dependencies
+pip install -e .
 
-1. **Home Dashboard**: View your overall statistics, current streak, and recent sessions
+# Run the application
+streamlit run main.py
+
+# Access at http://localhost:8501
+```
+
+## 📖 How to Use
+
+1. **Home Dashboard**: View your statistics, current streak, and recent sessions
 2. **Start Practice**: Click "START PRACTICE" or choose a quick mode
-3. **Configure Session**: Select mode type, category, and difficulty
+3. **Configure Session**: Select mode, category, and difficulty
 4. **Practice**: Answer questions as quickly and accurately as possible
 5. **View Results**: See your performance, earn badges, and get insights
 6. **Analytics**: Explore detailed statistics and trends
 
-### Tips for Best Results
-
+### Tips
 - **Practice Daily**: Build and maintain a streak for consistent improvement
 - **Start with Medium Difficulty**: Let adaptive mode adjust for you
-- **Focus on Weak Areas**: Use targeted practice to improve specific skills
 - **Aim for Speed**: Try to answer under 3 seconds for maximum bonuses
-- **Track Progress**: Regularly check analytics to identify trends
+- **Track Progress**: Check analytics to identify trends
 
 ## 🎯 Scoring System
 
 - **Base Points**: 100 points per correct answer
-- **Combo Multiplier**: 
-  - 3+ correct: 1.5x
-  - 5+ correct: 2.0x
-  - 10+ correct: 2.5x
-  - 15+ correct: 3.0x (max)
-- **Speed Bonus**:
-  - Under 2s: +100 points
-  - Under 3s: +50 points
-  - Under 5s: +25 points
-- **Difficulty Multiplier**:
-  - Easy: 1.0x
-  - Medium: 1.5x
-  - Hard: 2.0x
-
-## 🏅 Badges
-
-### Milestone Badges
-- **First Steps**: Complete your first session
-- **Century Club**: Answer 100 total questions
-- **Veteran**: Answer 1000 total questions
-- **Marathon Finisher**: Complete first marathon mode
-
-### Performance Badges
-- **Perfectionist**: 100% accuracy in a session (min 10 questions)
-- **Speed Demon**: 10 answers under 3 seconds in one session
-- **Lightning Round**: Average under 3s in a session
-- **No Miss**: 50 consecutive correct answers
-
-### Streak Badges
-- **Consistent**: 3-day streak
-- **Week Warrior**: 7-day streak
-- **Month Master**: 30-day streak
-
-### Category Mastery Badges
-- **Arithmetic Ace**: 95% accuracy over 50 arithmetic questions
-- **Percentage Pro**: 95% accuracy over 50 percentage questions
-- **Fraction Master**: 95% accuracy over 50 fraction questions
-- And more...
+- **Combo Multiplier**: Up to 3.0x for 15+ consecutive correct answers
+- **Speed Bonus**: Up to +100 points for answers under 2 seconds
+- **Difficulty Multiplier**: 1.0x (Easy), 1.5x (Medium), 2.0x (Hard)
 
 ## 🗄️ Data Storage
 
-All data is stored locally in a SQLite database (`data/mentalmath.db`):
+All data is stored locally in SQLite (`data/mentalmath.db`):
 - Session history
 - Question results
 - Badge progress
 - Daily streaks
-- User preferences
 
-No external API calls or cloud storage - your data stays private on your machine.
+**Your data stays private on your machine** - no external API calls or cloud storage.
+
+## 🐳 Docker Commands
+
+### Basic Operations
+```bash
+# Start
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Restart
+docker-compose restart
+
+# Stop
+docker-compose down
+```
+
+### Troubleshooting
+```bash
+# Check status
+docker-compose ps
+
+# Access container shell
+docker-compose exec mentalmath bash
+
+# Reset everything
+docker-compose down -v
+rm -rf data/*.db
+docker-compose up -d
+```
+
+### Configuration
+
+**Change Port**: Edit `docker-compose.yml`
+```yaml
+ports:
+  - "8502:8501"  # Change host port
+```
+
+**Resource Limits**: Default is 1 CPU core and 512MB RAM. Adjust in `docker-compose.yml`:
+```yaml
+deploy:
+  resources:
+    limits:
+      cpus: '2'
+      memory: 1G
+```
 
 ## 🧪 Testing
 
-Run tests with pytest:
-
 ```bash
+# Run all tests
 pytest tests/
+
+# Run with coverage
+pytest tests/ --cov=src
 ```
 
-Test coverage includes:
-- Question generation for all categories
-- Answer validation logic
-- Scoring calculations
-- Difficulty adjustment
-- Analytics functions
-
-## 🛠️ Development
-
-### Project Structure
+## 🛠️ Project Structure
 
 ```
 mentalmath/
-├── main.py                    # Streamlit entry point
+├── main.py                    # Application entry point
 ├── src/
-│   ├── models/               # Data models (Question, Session, etc.)
+│   ├── models/               # Data models
 │   ├── database/             # Database management
 │   ├── question_generator/   # Question generation by category
-│   ├── game_logic/           # Session management, scoring, validation
-│   ├── analytics/            # Performance tracking and insights
+│   ├── game_logic/           # Session management and scoring
+│   ├── analytics/            # Performance tracking
 │   ├── gamification/         # Badges and streaks
-│   └── ui/                   # Streamlit UI components and pages
-├── data/                     # SQLite database (created at runtime)
-├── tests/                    # Unit tests
-└── assets/                   # Badge icons and images
+│   └── ui/                   # Streamlit UI components
+├── data/                     # SQLite database (auto-created)
+└── tests/                    # Unit tests
 ```
 
-### Key Technologies
+## 🔧 Common Issues
 
-- **Streamlit**: Web interface and user interaction
-- **SQLite**: Local database for data persistence
-- **Pandas**: Data manipulation and analytics
-- **Plotly**: Interactive charts and visualizations
-- **Pydantic**: Data validation
-- **pytest**: Testing framework
+### Port Already in Use (Python)
+```bash
+streamlit run main.py --server.port 8502
+```
 
-## 🎨 Customization
+### Port Already in Use (Docker)
+Edit port in `docker-compose.yml` or stop conflicting service:
+```bash
+lsof -i :8501  # Find what's using the port
+```
 
-The app uses a trading-inspired color scheme:
-- 🟢 Green for correct answers and gains
-- 🔴 Red for incorrect answers and losses
-- 🔵 Blue for neutral information
+### Database Issues
+```bash
+# Python
+rm data/mentalmath.db
+streamlit run main.py
 
-Custom CSS styling is defined in `src/ui/styles.py` and can be modified for different themes.
+# Docker
+docker-compose down
+rm data/*.db
+docker-compose up -d
+```
+
+### Permission Issues (Docker)
+```bash
+chmod 755 data/
+```
 
 ## 📝 License
 
 This project is open source and available under the MIT License.
 
-## 🤝 Contributing
+## 📧 Support
 
-Contributions are welcome! Feel free to:
-- Report bugs
-- Suggest new features
-- Submit pull requests
-- Improve documentation
-
-## 🙏 Acknowledgments
-
-Built for traders and mental math enthusiasts who want to sharpen their quantitative skills.
-
-## 📧 Contact
-
-For questions, suggestions, or feedback, please open an issue on GitHub.
+For questions or issues, please open an issue on GitHub.
 
 ---
 
