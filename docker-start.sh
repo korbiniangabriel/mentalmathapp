@@ -30,7 +30,7 @@ if docker ps --format '{{.Names}}' | grep -q "^mentalmath-app$"; then
     echo "To stop: docker-compose down"
     echo "To view logs: docker-compose logs -f"
     echo ""
-    echo "📱 Access the app at: http://localhost:8501"
+    echo "📱 Access the app at: http://localhost:8502"
     exit 0
 fi
 
@@ -49,7 +49,7 @@ if [ $? -eq 0 ]; then
     echo ""
     echo "✅ Container started successfully!"
     echo ""
-    echo "📱 Access the app at: http://localhost:8501"
+    echo "📱 Access the app at: http://localhost:8502"
     echo ""
     echo "Useful commands:"
     echo "  • View logs: docker-compose logs -f"

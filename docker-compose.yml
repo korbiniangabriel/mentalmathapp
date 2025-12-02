@@ -7,7 +7,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8501:8501"  # Map host port 8501 to container port 8501
+      - "8502:8501"  # Map host port 8502 to container port 8501
     volumes:
       # Persist database data between container restarts
       - ./data:/app/data
