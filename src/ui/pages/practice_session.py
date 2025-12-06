@@ -1,8 +1,7 @@
 """Practice session page - core game interface."""
 import streamlit as st
-from datetime import datetime, timedelta
-import time
-from src.models.session import SessionConfig, SessionState
+from datetime import datetime
+from src.models.session import SessionConfig
 from src.game_logic.session_manager import SessionManager
 from src.ui.components import (
     question_display, combo_meter, feedback_display,
@@ -29,7 +28,7 @@ def show_practice_session(db_manager):
             config_dict = st.session_state.quick_mode
         else:
             st.error("No session configuration found")
-            if st.button("← Back to Home"):
+            if st.button("← Home"):
                 st.session_state.page = "home"
                 st.rerun()
             return
@@ -53,64 +52,55 @@ def show_practice_session(db_manager):
     
     # Check if session is complete
     if session.is_complete:
-        # End session and save
         summary = st.session_state.session_manager.end_session(session)
         st.session_state.session_summary = summary
         st.session_state.active_session = None
         st.session_state.page = "results"
         st.rerun()
     
-    # Top Bar
-    col1, col2, col3, col4 = st.columns([2, 2, 2, 1])
+    # Top Bar - simplified 3 columns for mobile
+    col1, col2, col3 = st.columns([2, 2, 1])
     
     with col1:
-        # Timer
         if session.config.mode_type == 'sprint':
             elapsed = (datetime.now() - session.start_time).total_seconds()
             remaining = int(session.config.duration_seconds - elapsed)
             if remaining <= 0:
-                # Time's up!
                 session.is_complete = True
                 st.rerun()
             countdown_timer(remaining)
         else:
             elapsed = int((datetime.now() - session.start_time).total_seconds())
-            minutes = elapsed // 60
-            seconds = elapsed % 60
-            st.metric("⏱️ Time", f"{minutes:02d}:{seconds:02d}")
+            st.metric("⏱️", f"{elapsed//60}:{elapsed%60:02d}")
     
     with col2:
-        # Progress
-        if session.config.mode_type == 'marathon' or session.config.mode_type == 'targeted':
+        if session.config.mode_type in ['marathon', 'targeted']:
             total = session.config.question_count
             current = len(session.questions_answered)
-            st.metric("📝 Progress", f"{current}/{total}")
+            st.metric("📝", f"{current}/{total}")
         else:
-            st.metric("📝 Questions", len(session.questions_answered))
+            st.metric("📝", len(session.questions_answered))
     
     with col3:
-        # Score
-        st.metric("🏆 Score", f"{session.total_score:,}")
-    
-    with col4:
-        # Quit button
-        if st.button("❌"):
+        if st.button("❌", help="Quit"):
             if st.session_state.get('confirm_quit', False):
-                # Actually quit
                 session.is_complete = True
                 st.rerun()
             else:
                 st.session_state.confirm_quit = True
                 st.rerun()
     
-    if st.session_state.get('confirm_quit', False):
-        st.warning("⚠️ Click ❌ again to quit session")
+    # Score display - compact
+    st.markdown(f"**🏆 {session.total_score:,}**")
     
-    st.markdown("---")
+    if st.session_state.get('confirm_quit', False):
+        st.warning("⚠️ Click ❌ again to quit")
     
     # Combo meter
     if session.combo_count > 0:
         combo_meter(session.combo_count)
+    
+    st.markdown("---")
     
     # Show feedback if available
     if st.session_state.show_feedback and st.session_state.last_result:
@@ -129,19 +119,17 @@ def show_practice_session(db_manager):
                 st.session_state.last_result = None
                 st.session_state.feedback_time = None
                 
-                # Check if session should end
                 if st.session_state.session_manager.check_session_end(session):
                     session.is_complete = True
                 
                 st.rerun()
         
         # Manual next button
-        if st.button("➡️ Next Question", use_container_width=True):
+        if st.button("➡️ Next", use_container_width=True):
             st.session_state.show_feedback = False
             st.session_state.last_result = None
             st.session_state.feedback_time = None
             
-            # Check if session should end
             if st.session_state.session_manager.check_session_end(session):
                 session.is_complete = True
             
@@ -152,19 +140,22 @@ def show_practice_session(db_manager):
         if session.current_question:
             question_display(session.current_question)
             
-            # Answer input
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            # Answer input - optimized for mobile
             with st.form(key="answer_form", clear_on_submit=True):
                 answer = st.text_input(
-                    "Your Answer:",
+                    "Answer:",
                     key="answer_input",
-                    placeholder="Enter your answer...",
-                    label_visibility="collapsed"
+                    placeholder="Enter answer...",
+                    label_visibility="collapsed",
+                    help="Tap here to enter your answer"
                 )
                 
-                submitted = st.form_submit_button("✓ Submit Answer", use_container_width=True, type="primary")
+                # Submit button with better mobile touch target
+                submitted = st.form_submit_button("✓ Submit", use_container_width=True, type="primary")
                 
                 if submitted and answer:
-                    # Process answer
                     result = st.session_state.session_manager.submit_answer(session, answer)
                     st.session_state.last_result = result
                     st.session_state.show_feedback = True
@@ -172,19 +163,20 @@ def show_practice_session(db_manager):
                     st.session_state.confirm_quit = False
                     st.rerun()
     
-    # Stats Sidebar
-    with st.sidebar:
-        st.subheader("📊 Session Stats")
-        
+    # Stats in expander instead of sidebar (better for mobile)
+    with st.expander("📊 Stats"):
         total_q = len(session.questions_answered)
         if total_q > 0:
             correct = sum(1 for r in session.questions_answered if r.is_correct)
             accuracy = correct / total_q * 100
             avg_time = sum(r.time_taken for r in session.questions_answered) / total_q
             
-            st.metric("Accuracy", f"{accuracy:.1f}%")
-            st.metric("Correct", f"{correct}/{total_q}")
-            st.metric("Avg Time", f"{avg_time:.1f}s")
-            st.metric("Combo", f"x{session.combo_count}")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Accuracy", f"{accuracy:.0f}%")
+                st.metric("Correct", f"{correct}/{total_q}")
+            with col2:
+                st.metric("Avg Time", f"{avg_time:.1f}s")
+                st.metric("Combo", f"x{session.combo_count}")
         else:
             st.info("Answer questions to see stats")

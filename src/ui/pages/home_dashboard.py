@@ -15,11 +15,9 @@ def show_home_dashboard(db_manager):
     tracker = PerformanceTracker(db_manager)
     streak_tracker = StreakTracker(db_manager)
     
-    # Header
-    st.title("🧮 Mental Math Trainer")
-    st.markdown(f"**{date.today().strftime('%A, %B %d, %Y')}**")
-    
-    st.markdown("---")
+    # Header - compact for mobile
+    st.title("🧮 Mental Math")
+    st.caption(date.today().strftime('%a, %b %d'))
     
     # Yesterday's best session popup
     yesterday = date.today() - timedelta(days=1)
@@ -34,29 +32,26 @@ def show_home_dashboard(db_manager):
             best_yesterday = yesterday_sessions.iloc[0]
             accuracy = best_yesterday['correct_answers'] / best_yesterday['total_questions'] * 100
             
-            with st.expander("📊 Yesterday's Performance", expanded=False):
-                st.info(f"""
-                **Best Session:** {best_yesterday['correct_answers']}/{best_yesterday['total_questions']} 
-                correct ({accuracy:.0f}%) • {best_yesterday['avg_time_per_question']:.1f}s avg time
-                
-                **Score:** {best_yesterday['total_score']:,} points
-                """)
+            with st.expander("📊 Yesterday", expanded=False):
+                st.write(f"**{best_yesterday['correct_answers']}/{best_yesterday['total_questions']}** ({accuracy:.0f}%) • {best_yesterday['avg_time_per_question']:.1f}s avg • {best_yesterday['total_score']:,} pts")
     
-    # Quick Stats Row
+    # Quick Stats Row - 2x2 grid
     stats = tracker.get_overall_stats()
     
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2 = st.columns(2)
     
     with col1:
         streak = streak_tracker.get_current_streak()
-        stat_card("Current Streak", f"{streak} days", "🔥")
+        stat_card("Streak", f"{streak}d", "🔥")
     
     with col2:
-        stat_card("Total Questions", f"{stats['total_questions']:,}", "📝")
+        stat_card("Questions", f"{stats['total_questions']:,}", "📝")
+    
+    col3, col4 = st.columns(2)
     
     with col3:
-        accuracy = f"{stats['accuracy']:.1f}%" if stats['total_questions'] > 0 else "N/A"
-        stat_card("Overall Accuracy", accuracy, "🎯")
+        accuracy = f"{stats['accuracy']:.0f}%" if stats['total_questions'] > 0 else "N/A"
+        stat_card("Accuracy", accuracy, "🎯")
     
     with col4:
         avg_time = f"{stats['avg_time']:.1f}s" if stats['total_questions'] > 0 else "N/A"
@@ -64,23 +59,20 @@ def show_home_dashboard(db_manager):
     
     st.markdown("---")
     
-    # Start Practice Button (prominent)
-    st.markdown("<br>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if st.button("🎮 START PRACTICE", use_container_width=True, type="primary"):
-            st.session_state.page = "mode_selection"
-            st.rerun()
+    # Start Practice Button
+    if st.button("🎮 START PRACTICE", use_container_width=True, type="primary"):
+        st.session_state.page = "mode_selection"
+        st.rerun()
     
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("---")
     
-    # Quick Mode Buttons
-    st.subheader("Quick Start")
+    # Quick Mode Buttons - stacked for mobile
+    st.subheader("⚡ Quick Start")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        if st.button("⚡ Sprint Mode\n2-minute challenge", use_container_width=True):
+        if st.button("⚡ Sprint (2m)", use_container_width=True):
             st.session_state.quick_mode = {
                 'mode_type': 'sprint',
                 'category': 'mixed',
@@ -89,8 +81,22 @@ def show_home_dashboard(db_manager):
             }
             st.session_state.page = "practice_session"
             st.rerun()
-        
-        if st.button("🎯 Targeted Practice\nFocus on weak areas", use_container_width=True):
+    
+    with col2:
+        if st.button("🏃 Marathon (50)", use_container_width=True):
+            st.session_state.quick_mode = {
+                'mode_type': 'marathon',
+                'category': 'mixed',
+                'difficulty': 'medium',
+                'question_count': 50
+            }
+            st.session_state.page = "practice_session"
+            st.rerun()
+    
+    col3, col4 = st.columns(2)
+    
+    with col3:
+        if st.button("🎯 Targeted", use_container_width=True):
             st.session_state.quick_mode = {
                 'mode_type': 'targeted',
                 'category': 'targeted',
@@ -100,50 +106,27 @@ def show_home_dashboard(db_manager):
             st.session_state.page = "practice_session"
             st.rerun()
     
-    with col2:
-        if st.button("🏃 Marathon Mode\n50 questions", use_container_width=True):
-            st.session_state.quick_mode = {
-                'mode_type': 'marathon',
-                'category': 'mixed',
-                'difficulty': 'medium',
-                'question_count': 50
-            }
-            st.session_state.page = "practice_session"
-            st.rerun()
-        
-        if st.button("📊 View Analytics\nDetailed statistics", use_container_width=True):
+    with col4:
+        if st.button("📊 Analytics", use_container_width=True):
             st.session_state.page = "analytics"
             st.rerun()
     
     st.markdown("---")
     
-    # Recent Activity
-    st.subheader("Recent Sessions")
+    # Recent Activity - compact
+    st.subheader("📜 Recent")
     
     if recent_sessions.empty:
-        st.info("👋 No sessions yet. Start practicing to see your progress!")
+        st.info("👋 No sessions yet. Start practicing!")
     else:
-        # Show last 5 sessions
         display_sessions = recent_sessions.head(5)
         
         for _, session in display_sessions.iterrows():
             accuracy = session['correct_answers'] / session['total_questions'] * 100
+            timestamp = session['timestamp'][:10] if isinstance(session['timestamp'], str) else str(session['timestamp'])[:10]
             
-            col1, col2, col3, col4, col5 = st.columns([2, 1, 1, 1, 1])
+            # Single line compact view
+            color = "green" if accuracy >= 80 else "orange" if accuracy >= 60 else "red"
+            mode_short = session['mode_type'][:3].title()
             
-            with col1:
-                timestamp = session['timestamp'][:10] if isinstance(session['timestamp'], str) else str(session['timestamp'])[:10]
-                st.write(f"**{timestamp}** • {session['mode_type'].title()}")
-            
-            with col2:
-                st.write(f"{session['category'].title()}")
-            
-            with col3:
-                st.write(f"{session['correct_answers']}/{session['total_questions']}")
-            
-            with col4:
-                color = "green" if accuracy >= 80 else "orange" if accuracy >= 60 else "red"
-                st.markdown(f":{color}[{accuracy:.0f}%]")
-            
-            with col5:
-                st.write(f"{session['total_score']:,} pts")
+            st.markdown(f"**{timestamp}** • {mode_short} • :{color}[{accuracy:.0f}%] • {session['total_score']:,}pts")

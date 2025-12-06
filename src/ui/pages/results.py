@@ -17,7 +17,7 @@ def show_results(db_manager):
     """
     if 'session_summary' not in st.session_state:
         st.error("No session summary found")
-        if st.button("← Back to Home"):
+        if st.button("← Home"):
             st.session_state.page = "home"
             st.rerun()
         return
@@ -30,32 +30,32 @@ def show_results(db_manager):
     streak_tracker = StreakTracker(db_manager)
     
     # Header
-    celebration_header("🎯 SESSION COMPLETE!")
+    celebration_header("🎯 COMPLETE!")
     
     st.markdown("---")
     
-    # Main Stats
-    st.subheader("📈 Performance Summary")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
+    # Main Stats - 2x2 grid
     accuracy = summary.correct_answers / summary.total_questions * 100
     
+    col1, col2 = st.columns(2)
+    
     with col1:
-        stat_card("Final Score", f"{summary.total_score:,}", "🏆")
+        stat_card("Score", f"{summary.total_score:,}", "🏆")
     
     with col2:
-        stat_card("Accuracy", f"{accuracy:.1f}%", "🎯")
+        stat_card("Accuracy", f"{accuracy:.0f}%", "🎯")
+    
+    col3, col4 = st.columns(2)
     
     with col3:
-        stat_card("Questions", f"{summary.correct_answers}/{summary.total_questions}", "📝")
+        stat_card("Correct", f"{summary.correct_answers}/{summary.total_questions}", "📝")
     
     with col4:
         stat_card("Avg Time", f"{summary.avg_time_per_question:.1f}s", "⏱️")
     
     st.markdown("---")
     
-    # Insights Section
+    # Insights - compact
     st.subheader("💡 Insights")
     
     insights = insights_gen.generate_session_insights(summary)
@@ -63,93 +63,86 @@ def show_results(db_manager):
     for insight in insights:
         insight_card(insight['text'], insight['type'])
     
-    st.markdown("---")
-    
     # Check for new badges
     newly_earned = badge_mgr.check_earned_badges(summary)
     
     if newly_earned:
-        st.subheader("🎉 New Badges Earned!")
+        st.markdown("---")
+        st.subheader("🎉 New Badges!")
         
-        cols = st.columns(min(len(newly_earned), 4))
-        for i, badge in enumerate(newly_earned):
-            with cols[i % 4]:
-                badge_display(badge, earned=True)
+        # 3 per row max
+        for i in range(0, len(newly_earned), 3):
+            cols = st.columns(3)
+            for j, col in enumerate(cols):
+                if i + j < len(newly_earned):
+                    with col:
+                        badge_display(newly_earned[i + j], earned=True)
         
         st.balloons()
-        st.markdown("---")
-    
-    # Streak Update
-    st.subheader("🔥 Streak Status")
-    
-    current_streak = streak_tracker.get_current_streak()
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if current_streak > 0:
-            streak_flame(current_streak)
-        else:
-            st.info("Start a streak by practicing daily!")
     
     st.markdown("---")
     
-    # Performance Breakdown
-    with st.expander("📊 Detailed Breakdown", expanded=False):
-        # Group results by question type
+    # Streak - compact
+    st.subheader("🔥 Streak")
+    
+    current_streak = streak_tracker.get_current_streak()
+    
+    if current_streak > 0:
+        streak_flame(current_streak)
+    else:
+        st.info("Start a streak by practicing daily!")
+    
+    # Performance Breakdown - compact
+    with st.expander("📊 Breakdown"):
         by_type = {}
         for result in summary.results:
             q_type = result.question.question_type
             if q_type not in by_type:
-                by_type[q_type] = {
-                    'total': 0,
-                    'correct': 0,
-                    'total_time': 0
-                }
+                by_type[q_type] = {'total': 0, 'correct': 0, 'total_time': 0}
             
             by_type[q_type]['total'] += 1
             if result.is_correct:
                 by_type[q_type]['correct'] += 1
             by_type[q_type]['total_time'] += result.time_taken
         
-        # Display breakdown
         for q_type, stats in by_type.items():
-            accuracy = stats['correct'] / stats['total'] * 100
-            avg_time = stats['total_time'] / stats['total']
-            
-            st.write(f"**{q_type.title()}**: {stats['correct']}/{stats['total']} "
-                    f"({accuracy:.0f}%) • {avg_time:.1f}s avg")
+            acc = stats['correct'] / stats['total'] * 100
+            avg = stats['total_time'] / stats['total']
+            st.write(f"**{q_type.title()}**: {stats['correct']}/{stats['total']} ({acc:.0f}%) • {avg:.1f}s")
     
     st.markdown("---")
     
-    # Action Buttons
-    st.subheader("What's Next?")
+    # Action Buttons - 2 column grid
+    st.subheader("Next?")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        if st.button("🔄 Practice Again\nSame settings", use_container_width=True):
-            # Restart with same config
-            config_dict = {
+        if st.button("🔄 Again", use_container_width=True):
+            st.session_state.session_config = {
                 'mode_type': summary.config.mode_type,
                 'category': summary.config.category,
                 'difficulty': summary.config.difficulty,
                 'duration_seconds': summary.config.duration_seconds,
                 'question_count': summary.config.question_count
             }
-            st.session_state.session_config = config_dict
             st.session_state.page = "practice_session"
             st.session_state.active_session = None
             st.rerun()
-        
-        if st.button("📊 View Analytics\nDetailed stats", use_container_width=True):
+    
+    with col2:
+        if st.button("⚙️ New Mode", use_container_width=True):
+            st.session_state.page = "mode_selection"
+            st.rerun()
+    
+    col3, col4 = st.columns(2)
+    
+    with col3:
+        if st.button("📊 Analytics", use_container_width=True):
             st.session_state.page = "analytics"
             st.rerun()
     
-    with col2:
-        if st.button("⚙️ Change Mode\nNew configuration", use_container_width=True):
-            st.session_state.page = "mode_selection"
-            st.rerun()
-        
-        if st.button("🏠 Back to Home\nMain dashboard", use_container_width=True):
+    with col4:
+        if st.button("🏠 Home", use_container_width=True):
             st.session_state.page = "home"
             st.rerun()

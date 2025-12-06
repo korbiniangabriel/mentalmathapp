@@ -14,7 +14,7 @@ def stat_card(title: str, value: str, icon: str):
     """
     st.markdown(f"""
         <div class="stat-card">
-            <div style="font-size: 2rem;">{icon}</div>
+            <div class="stat-card-icon">{icon}</div>
             <div class="stat-card-value">{value}</div>
             <div class="stat-card-label">{title}</div>
         </div>
@@ -29,17 +29,14 @@ def combo_meter(combo_count: int, max_combo: int = 15):
         max_combo: Maximum combo for visualization
     """
     percentage = min(combo_count / max_combo * 100, 100)
-    
     fire_emojis = "🔥" * min(combo_count // 3, 5)
     
     st.markdown(f"""
-        <div style="text-align: center; margin: 1rem 0;">
-            <div style="font-size: 1.5rem; font-weight: bold;">
-                {fire_emojis} COMBO x{combo_count} {fire_emojis}
-            </div>
-            <div class="combo-meter">
-                <div class="combo-meter-fill" style="width: {percentage}%;"></div>
-            </div>
+        <div class="combo-text">
+            {fire_emojis} COMBO x{combo_count} {fire_emojis}
+        </div>
+        <div class="combo-meter">
+            <div class="combo-meter-fill" style="width: {percentage}%;"></div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -56,8 +53,8 @@ def progress_bar_with_label(current: int, total: int, label: str = "Progress"):
     
     st.markdown(f"""
         <div>
-            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                <span style="font-weight: bold;">{label}</span>
+            <div class="progress-label">
+                <span><b>{label}</b></span>
                 <span>{current}/{total}</span>
             </div>
             <div class="progress-container">
@@ -80,9 +77,7 @@ def badge_display(badge: Badge, earned: bool):
         <div class="badge {lock_class}">
             <div class="badge-icon">{badge.icon}</div>
             <div class="badge-name">{badge.badge_name}</div>
-            <div style="font-size: 0.8rem; color: rgba(255,255,255,0.8);">
-                {badge.description}
-            </div>
+            <div class="badge-description">{badge.description}</div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -142,11 +137,11 @@ def streak_flame(days: int):
     flames = "🔥" * max(flame_size, 1)
     
     st.markdown(f"""
-        <div style="text-align: center; padding: 1rem;">
-            <div class="streak-flame" style="font-size: 3rem;">
+        <div class="streak-container">
+            <div class="streak-flame streak-icon">
                 {flames}
             </div>
-            <div style="font-size: 1.5rem; font-weight: bold; margin-top: 0.5rem;">
+            <div class="streak-text">
                 {days} Day Streak!
             </div>
         </div>
@@ -185,6 +180,6 @@ def celebration_header(text: str):
     """
     st.markdown(f"""
         <div class="celebration">
-            <h1 style="font-size: 3rem;">{text}</h1>
+            <div class="celebration-title">{text}</div>
         </div>
     """, unsafe_allow_html=True)
