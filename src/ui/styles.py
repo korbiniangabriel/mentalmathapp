@@ -44,6 +44,37 @@ def get_custom_css() -> str:
         padding-left: 0.5rem !important;
         padding-right: 0.5rem !important;
         max-width: 100% !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+
+    /* ========================================
+       MOBILE LAYOUT FIXES
+       - Streamlit columns can get too narrow on phones,
+         causing ugly wrapping and left-stacked "boxes".
+       - Stack 3+ column rows vertically on small screens.
+       ======================================== */
+
+    @media (max-width: 520px) {
+        /* Stack 3+ column rows (but keep 2-column button rows side-by-side) */
+        [data-testid="stHorizontalBlock"]:has(> div:nth-child(3)) {
+            flex-direction: column !important;
+            align-items: stretch !important;
+        }
+
+        /* Make each column full width */
+        [data-testid="stHorizontalBlock"]:has(> div:nth-child(3)) > div,
+        [data-testid="stHorizontalBlock"]:has(> div:nth-child(3)) [data-testid="column"],
+        [data-testid="stHorizontalBlock"]:has(> div:nth-child(3)) [data-testid="stColumn"] {
+            width: 100% !important;
+            flex: 1 1 100% !important;
+            min-width: 0 !important;
+        }
+
+        /* Reduce the "gutter" between stacked columns */
+        [data-testid="stHorizontalBlock"]:has(> div:nth-child(3)) > div {
+            margin-bottom: 0.35rem !important;
+        }
     }
     
     /* ========================================
@@ -119,10 +150,9 @@ def get_custom_css() -> str:
         font-weight: bold;
         margin: 0.5rem 0;
         box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-        word-break: break-word;
-        position: sticky;
-        top: 0;
-        z-index: 100;
+        word-break: normal;
+        overflow-wrap: anywhere;
+        position: relative;
     }
     
     /* ========================================
@@ -315,6 +345,8 @@ def get_custom_css() -> str:
         transition: all 0.2s ease;
         min-height: 44px;
         touch-action: manipulation;
+        white-space: normal;
+        line-height: 1.15;
     }
     
     .stButton>button:hover {
@@ -364,6 +396,18 @@ def get_custom_css() -> str:
         padding: 0.5rem;
         -webkit-appearance: none;
         border-radius: 6px;
+    }
+
+    /* Hide number input spinners (desktop browsers) */
+    .stTextInput input[type="number"]::-webkit-outer-spin-button,
+    .stTextInput input[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    .stTextInput input[type="number"] {
+        -moz-appearance: textfield;
+        appearance: textfield;
     }
     
     /* Prevent zoom on focus for mobile */
@@ -583,6 +627,9 @@ def get_custom_css() -> str:
             font-size: 1.5rem;
             padding: 1.25rem;
             margin: 0.75rem 0;
+            position: sticky;
+            top: 0.25rem;
+            z-index: 100;
         }
         
         .feedback-correct, .feedback-incorrect {
