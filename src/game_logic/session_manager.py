@@ -204,10 +204,17 @@ class SessionManager:
     
     def check_session_end(self, state: SessionState) -> bool:
         """Check if session should end.
-        
+
+        This is intentionally idempotent and side-effect-free. It is invoked
+        twice per submission cycle (once inside ``submit_answer`` to gate
+        next-question generation, and again from the UI after the call returns
+        so it can branch to the results screen). Calling it twice does not
+        double-count anything — it simply checks ``len(state.questions_answered)``
+        against the mode's target. Keep it pure.
+
         Args:
             state: Current session state
-            
+
         Returns:
             True if session should end
         """
@@ -216,37 +223,61 @@ class SessionManager:
             elapsed = (datetime.now() - state.start_time).total_seconds()
             duration_limit = int(state.config.duration_seconds or 0)
             return elapsed >= duration_limit
-        
+
         elif state.config.mode_type == 'marathon':
             # End if question count reached
             target_count = int(state.config.question_count or 0)
             return len(state.questions_answered) >= target_count
-        
+
         elif state.config.mode_type == 'targeted':
             # End after default question count
             default_count = state.config.question_count or 25
             return len(state.questions_answered) >= default_count
-        
+
         return False
     
     def end_session(self, state: SessionState) -> SessionSummary:
         """Finalize and save session.
-        
+
+        A 0-answer abandon (e.g. user opens a session and quits before
+        answering anything) returns a "no-data" SessionSummary with zeroed
+        stats rather than raising — the UI quit-confirmation flow can land
+        here legitimately and we don't want it to crash.
+
         Args:
             state: Session state to finalize
-            
+
         Returns:
-            Session summary
+            Session summary (zeroed if no questions were answered)
         """
-        if not state.questions_answered:
-            raise ValueError("Cannot end session with no questions answered")
-        
-        # Calculate statistics
         total_questions = len(state.questions_answered)
+
+        if total_questions == 0:
+            # No-data summary: zero everything, duration measured from
+            # session start to now. Don't divide by zero on avg_time.
+            duration = int((datetime.now() - state.start_time).total_seconds())
+            summary = SessionSummary(
+                session_id=None,
+                config=state.config,
+                total_questions=0,
+                correct_answers=0,
+                total_score=0,
+                avg_time_per_question=0.0,
+                duration_seconds=max(duration, 0),
+                results=[],
+                timestamp=state.start_time,
+            )
+            # Persist the abandon so it shows up in history; db_manager
+            # already handles empty results (see save_session line ~136).
+            session_id = self.db.save_session(summary)
+            summary.session_id = session_id
+            return summary
+
+        # Calculate statistics
         correct_answers = sum(1 for r in state.questions_answered if r.is_correct)
         duration = int((state.questions_answered[-1].timestamp - state.start_time).total_seconds())
         avg_time = sum(r.time_taken for r in state.questions_answered) / total_questions
-        
+
         # Create summary
         summary = SessionSummary(
             session_id=None,
@@ -259,9 +290,9 @@ class SessionManager:
             results=state.questions_answered,
             timestamp=state.start_time
         )
-        
+
         # Save to database
         session_id = self.db.save_session(summary)
         summary.session_id = session_id
-        
+
         return summary

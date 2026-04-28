@@ -61,19 +61,32 @@ class ScoreCalculator:
     
     @staticmethod
     def calculate_difficulty_multiplier(difficulty: str) -> float:
-        """Calculate multiplier based on difficulty.
-        
+        """Calculate multiplier based on the *served* question difficulty.
+
         Args:
-            difficulty: 'easy', 'medium', 'hard', or 'adaptive'
-            
+            difficulty: 'easy', 'medium', or 'hard'. The string 'adaptive' is
+                accepted only as a defensive fallback — see note below.
+
         Returns:
             Difficulty multiplier
+
+        Note:
+            ``Question.difficulty`` is always one of {'easy','medium','hard'}.
+            ``SessionConfig.difficulty`` may be 'adaptive', but
+            ``SessionManager.get_next_question`` resolves that to a concrete
+            level *before* invoking the generator (see session_manager.py:
+            ``get_next_question``), so questions never carry the 'adaptive'
+            label. The 'adaptive' branch below is dead code in practice and is
+            kept only as a 1.0 fallback so a stray label can't silently inflate
+            scores.
         """
         multipliers = {
             'easy': 1.0,
             'medium': 1.5,
             'hard': 2.0,
-            'adaptive': 1.5
+            # Defensive fallback only; see docstring. 1.0 (not 1.5) so a
+            # mis-labelled question never gets a free multiplier bump.
+            'adaptive': 1.0,
         }
         return multipliers.get(difficulty, 1.0)
     
