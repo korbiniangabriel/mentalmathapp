@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS questions_answered (
     correct_answer TEXT NOT NULL,
     user_answer TEXT,
     is_correct BOOLEAN NOT NULL,
+    was_skipped BOOLEAN NOT NULL DEFAULT 0,
     time_taken_seconds REAL NOT NULL,
     timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
@@ -66,4 +67,5 @@ CREATE INDEX IF NOT EXISTS idx_sessions_timestamp ON sessions(timestamp);
 CREATE INDEX IF NOT EXISTS idx_sessions_category ON sessions(category);
 CREATE INDEX IF NOT EXISTS idx_questions_session_id ON questions_answered(session_id);
 CREATE INDEX IF NOT EXISTS idx_questions_type ON questions_answered(question_type);
+CREATE INDEX IF NOT EXISTS idx_questions_timestamp ON questions_answered(timestamp);
 CREATE INDEX IF NOT EXISTS idx_daily_streaks_date ON daily_streaks(date);

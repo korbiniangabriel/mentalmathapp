@@ -1,9 +1,10 @@
 """Database manager for Mental Math Training App."""
+
 import sqlite3
-import os
-from datetime import datetime, date, timedelta
-from typing import List, Dict, Optional, Tuple
+from datetime import date, datetime, timedelta
 from pathlib import Path
+from typing import Dict, List, Optional
+
 import pandas as pd
 
 from src.models.session import SessionConfig, SessionSummary, QuestionResult
@@ -12,6 +13,23 @@ from src.models.user_stats import Badge
 
 class DatabaseManager:
     """Manages all database operations."""
+
+    VALID_SESSION_CATEGORIES = {
+        "arithmetic",
+        "percentage",
+        "fractions",
+        "ratios",
+        "compound",
+        "estimation",
+        "mixed",
+    }
+    SESSION_CATEGORY_ALIASES = {
+        "addition": "arithmetic",
+        "subtraction": "arithmetic",
+        "multiplication": "arithmetic",
+        "division": "arithmetic",
+        "targeted": "mixed",
+    }
     
     def __init__(self, db_path: str = "data/mentalmath.db"):
         """Initialize database connection."""
@@ -30,18 +48,38 @@ class DatabaseManager:
         """Create tables and insert default data."""
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
         # Read and execute schema
         schema_path = Path(__file__).parent / "schema.sql"
         with open(schema_path, 'r') as f:
             schema = f.read()
         cursor.executescript(schema)
-        
+
+        # Apply additive migrations for dbs created before new columns existed.
+        self._apply_migrations(cursor)
+
         # Insert default badges if not exists
         self._insert_default_badges(cursor)
-        
+
         conn.commit()
         conn.close()
+
+    def _apply_migrations(self, cursor):
+        """Idempotent column additions for older databases.
+
+        SQLite's CREATE TABLE IF NOT EXISTS won't add columns to an existing
+        table, so we add them via ALTER TABLE and swallow the "duplicate
+        column" error if they already exist.
+        """
+        migrations = [
+            ("questions_answered", "was_skipped", "BOOLEAN NOT NULL DEFAULT 0"),
+        ]
+        for table, column, definition in migrations:
+            try:
+                cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+            except sqlite3.OperationalError as e:
+                if "duplicate column" not in str(e).lower():
+                    raise
     
     def _insert_default_badges(self, cursor):
         """Insert predefined badges."""
@@ -86,6 +124,10 @@ class DatabaseManager:
         """Save a completed session and return session_id."""
         conn = self.get_connection()
         cursor = conn.cursor()
+
+        category = self.SESSION_CATEGORY_ALIASES.get(summary.config.category, summary.config.category)
+        if category not in self.VALID_SESSION_CATEGORIES:
+            category = "mixed"
         
         # Calculate duration
         if summary.duration_seconds:
@@ -103,7 +145,7 @@ class DatabaseManager:
         """, (
             summary.timestamp,
             summary.config.mode_type,
-            summary.config.category,
+            category,
             summary.config.difficulty,
             duration,
             summary.total_questions,
@@ -113,7 +155,11 @@ class DatabaseManager:
             True
         ))
         
-        session_id = cursor.lastrowid
+        raw_session_id = cursor.lastrowid
+        if raw_session_id is None:
+            conn.close()
+            raise RuntimeError("Failed to create session record")
+        session_id = int(raw_session_id)
         
         # Save all question results
         for result in summary.results:
@@ -132,8 +178,9 @@ class DatabaseManager:
         cursor.execute("""
             INSERT INTO questions_answered (
                 session_id, question_type, difficulty, question_text,
-                correct_answer, user_answer, is_correct, time_taken_seconds, timestamp
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                correct_answer, user_answer, is_correct, was_skipped,
+                time_taken_seconds, timestamp
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             session_id,
             result.question.question_type,
@@ -142,24 +189,37 @@ class DatabaseManager:
             result.question.correct_answer,
             result.user_answer,
             result.is_correct,
+            getattr(result, "was_skipped", False),
             result.time_taken,
             result.timestamp
         ))
     
-    def get_session_history(self, limit: int = 50) -> pd.DataFrame:
+    def get_session_history(self, limit: int = 50, days: Optional[int] = None) -> pd.DataFrame:
         """Retrieve past sessions."""
         conn = self.get_connection()
-        query = """
-            SELECT * FROM sessions
-            WHERE completed = 1
-            ORDER BY timestamp DESC
-            LIMIT ?
-        """
-        df = pd.read_sql_query(query, conn, params=(limit,))
+        if days is None:
+            query = """
+                SELECT * FROM sessions
+                WHERE completed = 1
+                ORDER BY timestamp DESC
+                LIMIT ?
+            """
+            params = [limit]
+        else:
+            cutoff = datetime.now() - timedelta(days=days)
+            query = """
+                SELECT * FROM sessions
+                WHERE completed = 1 AND timestamp >= ?
+                ORDER BY timestamp DESC
+                LIMIT ?
+            """
+            params = [cutoff.strftime("%Y-%m-%d %H:%M:%S"), limit]
+
+        df = pd.read_sql_query(query, conn, params=params)
         conn.close()
         return df
     
-    def get_questions_by_type(self, question_type: str = None, limit: int = 100) -> pd.DataFrame:
+    def get_questions_by_type(self, question_type: Optional[str] = None, limit: int = 100) -> pd.DataFrame:
         """Filter questions by category."""
         conn = self.get_connection()
         if question_type:
@@ -169,45 +229,72 @@ class DatabaseManager:
                 ORDER BY timestamp DESC
                 LIMIT ?
             """
-            df = pd.read_sql_query(query, conn, params=(question_type, limit))
+            df = pd.read_sql_query(query, conn, params=[question_type, limit])
         else:
             query = """
                 SELECT * FROM questions_answered
                 ORDER BY timestamp DESC
                 LIMIT ?
             """
-            df = pd.read_sql_query(query, conn, params=(limit,))
+            df = pd.read_sql_query(query, conn, params=[limit])
         conn.close()
         return df
     
-    def get_performance_stats(self) -> Dict:
-        """Get aggregate performance statistics."""
+    def get_performance_stats(self, days: Optional[int] = None) -> Dict:
+        """Get aggregate performance statistics.
+
+        Args:
+            days: Optional lookback window
+        """
         conn = self.get_connection()
         cursor = conn.cursor()
-        
-        # Overall stats
-        cursor.execute("""
-            SELECT 
+
+        question_where = ""
+        session_where = ""
+        question_params: tuple = ()
+        session_params: tuple = ()
+
+        if days is not None:
+            cutoff = datetime.now() - timedelta(days=days)
+            question_where = "WHERE timestamp >= ?"
+            session_where = "WHERE timestamp >= ?"
+            question_params = (cutoff,)
+            session_params = (cutoff,)
+
+        cursor.execute(
+            f"""
+            SELECT
                 COUNT(*) as total_questions,
                 SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) as correct_answers,
                 AVG(time_taken_seconds) as avg_time
             FROM questions_answered
-        """)
+            {question_where}
+            """,
+            question_params,
+        )
         row = cursor.fetchone()
-        
+
         stats = {
             'total_questions': row['total_questions'] or 0,
             'correct_answers': row['correct_answers'] or 0,
             'accuracy': (row['correct_answers'] / row['total_questions'] * 100) if row['total_questions'] > 0 else 0,
             'avg_time': row['avg_time'] or 0
         }
-        
-        # Session stats
-        cursor.execute("SELECT COUNT(*) as total_sessions, SUM(total_score) as total_score FROM sessions")
+
+        cursor.execute(
+            f"""
+            SELECT
+                COUNT(*) as total_sessions,
+                SUM(total_score) as total_score
+            FROM sessions
+            {session_where}
+            """,
+            session_params,
+        )
         session_row = cursor.fetchone()
         stats['total_sessions'] = session_row['total_sessions'] or 0
         stats['total_score'] = session_row['total_score'] or 0
-        
+
         conn.close()
         return stats
     
@@ -383,3 +470,36 @@ class DatabaseManager:
         df = pd.read_sql_query(query, conn)
         conn.close()
         return df
+
+    def get_user_preference(self, key: str, default: Optional[str] = None) -> Optional[str]:
+        """Fetch a saved user preference by key."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM user_preferences WHERE key = ?", (key,))
+        row = cursor.fetchone()
+        conn.close()
+        return row['value'] if row else default
+
+    def set_user_preference(self, key: str, value: str):
+        """Create or update a user preference."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO user_preferences (key, value)
+            VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            """,
+            (key, value),
+        )
+        conn.commit()
+        conn.close()
+
+    def get_user_preferences(self) -> Dict[str, str]:
+        """Return all user preferences as a dictionary."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT key, value FROM user_preferences")
+        preferences = {row['key']: row['value'] for row in cursor.fetchall()}
+        conn.close()
+        return preferences

@@ -1,799 +1,622 @@
-"""Custom CSS styling for the app - Mobile First Design."""
+"""Custom CSS styling for the app."""
 
 
 def get_custom_css() -> str:
-    """Get custom CSS for the application.
-    
-    Returns:
-        CSS string - Mobile first approach
-    """
+    """Return the full style sheet for the Streamlit app."""
     return """
     <style>
-    /* ========================================
-       MOBILE FIRST CSS - Base styles for mobile
-       ======================================== */
-    
-    /* Mobile viewport optimization */
+    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
+    :root {
+        --bg-0: #f2f6f8;
+        --bg-1: #dce9ef;
+        --paper: #ffffff;
+        --ink-900: #11212c;
+        --ink-700: #384a56;
+        --ink-500: #6c7a86;
+        --line: #d2dde4;
+        --brand: #0f766e;
+        --brand-strong: #115e59;
+        --accent: #f59e0b;
+        --accent-soft: #fef3c7;
+        --success: #15803d;
+        --danger: #b42318;
+        --warning: #b45309;
+        --shadow: 0 14px 30px rgba(16, 34, 45, 0.08);
+        --radius-lg: 18px;
+        --radius-md: 12px;
+        --radius-sm: 10px;
+    }
+
     * {
         -webkit-tap-highlight-color: transparent;
-        -webkit-touch-callout: none;
-    }
-    
-    html {
-        -webkit-text-size-adjust: 100%;
-        text-size-adjust: 100%;
-    }
-    
-    /* Main color scheme */
-    :root {
-        --profit-green: #2ecc71;
-        --loss-red: #e74c3c;
-        --neutral-blue: #3498db;
-        --dark-bg: #2c3e50;
-        --light-bg: #ecf0f1;
-    }
-    
-    /* Main container - tight padding on mobile */
-    .main {
-        padding: 0.25rem;
-    }
-    
-    .block-container {
-        padding-top: 0.5rem !important;
-        padding-bottom: 0.5rem !important;
-        padding-left: 0.5rem !important;
-        padding-right: 0.5rem !important;
-        max-width: 100% !important;
-        margin-left: auto !important;
-        margin-right: auto !important;
+        box-sizing: border-box;
     }
 
-    /* ========================================
-       MOBILE LAYOUT FIXES
-       - Streamlit columns can get too narrow on phones,
-         causing ugly wrapping and left-stacked "boxes".
-       - Stack 3+ column rows vertically on small screens.
-       ======================================== */
-
-    @media (max-width: 520px) {
-        /* Stack 3+ column rows (but keep 2-column button rows side-by-side) */
-        [data-testid="stHorizontalBlock"]:has(> div:nth-child(3)) {
-            flex-direction: column !important;
-            align-items: stretch !important;
-        }
-
-        /* Make each column full width */
-        [data-testid="stHorizontalBlock"]:has(> div:nth-child(3)) > div,
-        [data-testid="stHorizontalBlock"]:has(> div:nth-child(3)) [data-testid="column"],
-        [data-testid="stHorizontalBlock"]:has(> div:nth-child(3)) [data-testid="stColumn"] {
-            width: 100% !important;
-            flex: 1 1 100% !important;
-            min-width: 0 !important;
-        }
-
-        /* Reduce the "gutter" between stacked columns */
-        [data-testid="stHorizontalBlock"]:has(> div:nth-child(3)) > div {
-            margin-bottom: 0.35rem !important;
-        }
+    html, body, [class*="css"] {
+        font-family: "Manrope", "Segoe UI", sans-serif;
+        color: var(--ink-900);
     }
-    
-    /* ========================================
-       STAT CARDS - Compact for mobile
-       ======================================== */
-    .stat-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 0.4rem 0.3rem;
-        border-radius: 6px;
-        color: white;
-        text-align: center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+    [data-testid="stAppViewContainer"] {
+        background:
+            radial-gradient(1100px 500px at 90% -10%, rgba(15, 118, 110, 0.16), transparent 60%),
+            radial-gradient(800px 420px at 0% 20%, rgba(245, 158, 11, 0.13), transparent 58%),
+            linear-gradient(180deg, var(--bg-1) 0%, var(--bg-0) 38%, #f8fbfc 100%);
+    }
+
+    .main .block-container {
+        max-width: 1120px;
+        padding-top: 1.2rem;
+        padding-bottom: 2.2rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    h1, h2, h3 {
+        color: var(--ink-900);
+        letter-spacing: -0.02em;
+    }
+
+    h1 {
+        font-weight: 800;
+        font-size: clamp(1.65rem, 2.4vw, 2.3rem);
+        margin-bottom: 0.45rem;
+    }
+
+    h2 {
+        font-weight: 700;
+        font-size: clamp(1.12rem, 1.5vw, 1.42rem);
+        margin-bottom: 0.4rem;
+    }
+
+    h3 {
+        font-weight: 700;
+        font-size: 1.05rem;
         margin-bottom: 0.25rem;
     }
-    
-    .stat-card-icon {
-        font-size: 0.9rem;
-        line-height: 1;
+
+    p, li {
+        color: var(--ink-700);
+        line-height: 1.45;
     }
-    
-    .stat-card-value {
-        font-size: 0.95rem;
-        font-weight: bold;
-        margin: 0.1rem 0;
-        line-height: 1.2;
-    }
-    
-    .stat-card-label {
-        font-size: 0.6rem;
-        opacity: 0.9;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        line-height: 1.2;
-    }
-    
-    /* ========================================
-       COMBO METER - Compact
-       ======================================== */
-    .combo-meter {
-        background: linear-gradient(90deg, #f39c12 0%, #e74c3c 100%);
-        height: 14px;
-        border-radius: 7px;
+
+    .hero-shell {
         position: relative;
         overflow: hidden;
-        margin: 0.3rem 0;
+        padding: 1.35rem 1.4rem;
+        border: 1px solid rgba(17, 33, 44, 0.09);
+        border-radius: var(--radius-lg);
+        background:
+            linear-gradient(130deg, rgba(255, 255, 255, 0.98), rgba(240, 248, 247, 0.93));
+        box-shadow: var(--shadow);
+        margin-bottom: 0.85rem;
     }
-    
-    .combo-meter-fill {
-        background: linear-gradient(90deg, #2ecc71 0%, #27ae60 100%);
-        height: 100%;
-        border-radius: 7px;
-        transition: width 0.5s ease;
+
+    .hero-shell::after {
+        content: "";
+        position: absolute;
+        width: 220px;
+        height: 220px;
+        right: -55px;
+        top: -105px;
+        border-radius: 100%;
+        background: radial-gradient(circle at center, rgba(15, 118, 110, 0.26), rgba(15, 118, 110, 0));
     }
-    
-    .combo-text {
-        font-size: 0.85rem;
-        font-weight: bold;
-        text-align: center;
+
+    .hero-title {
+        position: relative;
+        z-index: 2;
+        color: var(--ink-900);
+        font-size: clamp(1.2rem, 2vw, 1.65rem);
+        font-weight: 800;
+        letter-spacing: -0.02em;
         margin-bottom: 0.2rem;
     }
-    
-    /* ========================================
-       QUESTION DISPLAY - Readable on mobile
-       ======================================== */
-    .question-display {
-        background: white;
-        border: 2px solid #3498db;
-        border-radius: 8px;
-        padding: 0.75rem;
-        text-align: center;
-        font-size: 1.3rem;
-        font-weight: bold;
-        margin: 0.5rem 0;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-        word-break: normal;
-        overflow-wrap: anywhere;
+
+    .hero-subtitle {
         position: relative;
+        z-index: 2;
+        color: var(--ink-700);
+        font-size: 0.94rem;
+        max-width: 760px;
     }
-    
-    /* ========================================
-       FEEDBACK - Compact
-       ======================================== */
-    .feedback-correct {
-        background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
-        color: white;
-        padding: 0.5rem;
-        border-radius: 6px;
-        text-align: center;
-        font-size: 0.9rem;
-        font-weight: bold;
+
+    .hero-chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        margin-top: 0.72rem;
+        position: relative;
+        z-index: 2;
     }
-    
-    .feedback-incorrect {
-        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-        color: white;
-        padding: 0.5rem;
-        border-radius: 6px;
-        text-align: center;
-        font-size: 0.9rem;
-        font-weight: bold;
+
+    .hero-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        background: rgba(15, 118, 110, 0.1);
+        color: var(--brand-strong);
+        border: 1px solid rgba(15, 118, 110, 0.22);
+        border-radius: 999px;
+        font-size: 0.74rem;
+        font-weight: 700;
+        padding: 0.26rem 0.62rem;
     }
-    
-    /* ========================================
-       BADGES - Small on mobile
-       ======================================== */
-    .badge {
-        display: inline-block;
-        background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
-        padding: 0.35rem;
-        border-radius: 6px;
-        text-align: center;
-        min-width: 55px;
-        margin: 0.15rem;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+    .stat-card {
+        background: linear-gradient(170deg, rgba(255, 255, 255, 0.98), rgba(246, 251, 252, 0.95));
+        border: 1px solid rgba(17, 33, 44, 0.08);
+        border-radius: var(--radius-md);
+        padding: 0.88rem 0.9rem;
+        box-shadow: 0 6px 14px rgba(17, 33, 44, 0.06);
+        min-height: 118px;
+        transition: transform 180ms ease, box-shadow 180ms ease;
     }
-    
-    .badge-locked {
-        opacity: 0.5;
-        filter: grayscale(100%);
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 22px rgba(17, 33, 44, 0.12);
     }
-    
-    .badge-icon {
-        font-size: 1rem;
-        margin-bottom: 0.1rem;
+
+    .stat-card-icon {
+        font-size: 1.05rem;
+        margin-bottom: 0.24rem;
     }
-    
-    .badge-name {
-        font-weight: bold;
-        color: white;
-        font-size: 0.6rem;
-        line-height: 1.2;
+
+    .stat-card-value {
+        color: var(--ink-900);
+        font-weight: 800;
+        font-size: clamp(1rem, 1.6vw, 1.33rem);
+        letter-spacing: -0.02em;
+        line-height: 1.15;
     }
-    
-    .badge-description {
-        font-size: 0.5rem;
-        color: rgba(255,255,255,0.8);
-        line-height: 1.1;
+
+    .stat-card-label {
+        color: var(--ink-700);
+        font-size: 0.76rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-top: 0.12rem;
     }
-    
-    /* ========================================
-       INSIGHT CARDS - Compact
-       ======================================== */
-    .insight-card {
-        padding: 0.5rem;
-        border-radius: 5px;
-        margin: 0.2rem 0;
-        border-left: 3px solid;
-        font-size: 0.8rem;
+
+    .stat-card-support {
+        margin-top: 0.35rem;
+        color: var(--ink-500);
+        font-size: 0.73rem;
         line-height: 1.3;
     }
-    
-    .insight-positive {
-        background: #d5f4e6;
-        border-color: #2ecc71;
+
+    .coach-note {
+        border-radius: var(--radius-md);
+        border: 1px solid var(--line);
+        padding: 0.82rem 0.9rem;
+        margin-bottom: 0.6rem;
+        background: rgba(255, 255, 255, 0.9);
     }
-    
-    .insight-neutral {
-        background: #d6eaf8;
-        border-color: #3498db;
+
+    .coach-note-title {
+        font-size: 0.82rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 0.2rem;
     }
-    
-    .insight-negative {
-        background: #fadbd8;
-        border-color: #e74c3c;
+
+    .coach-note-body {
+        color: var(--ink-700);
+        font-size: 0.9rem;
+        line-height: 1.35;
     }
-    
-    /* ========================================
-       STREAK FLAME
-       ======================================== */
-    .streak-flame {
-        display: inline-block;
-        animation: flicker 1.5s infinite;
+
+    .coach-note-positive {
+        border-color: rgba(21, 128, 61, 0.25);
+        background: rgba(233, 252, 243, 0.95);
     }
-    
-    .streak-container {
-        text-align: center;
-        padding: 0.3rem;
+
+    .coach-note-positive .coach-note-title {
+        color: var(--success);
     }
-    
-    .streak-icon {
-        font-size: 1.2rem;
+
+    .coach-note-warning {
+        border-color: rgba(180, 83, 9, 0.34);
+        background: rgba(255, 247, 220, 0.95);
     }
-    
-    .streak-text {
-        font-size: 0.85rem;
-        font-weight: bold;
-        margin-top: 0.15rem;
+
+    .coach-note-warning .coach-note-title {
+        color: var(--warning);
     }
-    
-    @keyframes flicker {
-        0%, 100% { transform: scale(1); opacity: 1; }
-        50% { transform: scale(1.1); opacity: 0.9; }
+
+    .coach-note-neutral {
+        border-color: rgba(15, 118, 110, 0.24);
+        background: rgba(237, 250, 248, 0.95);
     }
-    
-    /* ========================================
-       TIMER - Compact
-       ======================================== */
-    .timer {
-        font-size: 1rem;
-        font-weight: bold;
-        color: #3498db;
-        text-align: center;
-        padding: 0.3rem;
-        background: #ecf0f1;
-        border-radius: 6px;
-        margin: 0.25rem 0;
+
+    .coach-note-neutral .coach-note-title {
+        color: var(--brand-strong);
     }
-    
-    .timer-warning {
-        color: #e74c3c;
-        animation: pulse 1s infinite;
+
+    .combo-text {
+        color: var(--ink-900);
+        font-size: 0.82rem;
+        font-weight: 700;
+        margin-bottom: 0.24rem;
     }
-    
-    @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
-    }
-    
-    /* ========================================
-       PROGRESS BAR - Compact
-       ======================================== */
-    .progress-container {
-        background: #ecf0f1;
-        border-radius: 6px;
+
+    .combo-meter {
         height: 10px;
+        background: rgba(17, 33, 44, 0.13);
+        border-radius: 999px;
         overflow: hidden;
-        margin: 0.25rem 0;
     }
-    
-    .progress-bar {
-        background: linear-gradient(90deg, #2ecc71 0%, #27ae60 100%);
+
+    .combo-meter-fill {
         height: 100%;
-        transition: width 0.5s ease;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #f59e0b, #f97316);
+        transition: width 240ms ease;
     }
-    
+
+    .question-display {
+        border: 1px solid rgba(17, 33, 44, 0.1);
+        background: linear-gradient(180deg, #ffffff, #f7fbfc);
+        border-radius: var(--radius-lg);
+        padding: 1.12rem 1.06rem;
+        font-size: clamp(1.42rem, 2.6vw, 2rem);
+        letter-spacing: -0.02em;
+        font-weight: 800;
+        color: var(--ink-900);
+        text-align: center;
+        box-shadow: var(--shadow);
+    }
+
+    .feedback-correct,
+    .feedback-incorrect {
+        border-radius: var(--radius-md);
+        padding: 0.78rem 0.9rem;
+        font-weight: 700;
+        font-size: 0.92rem;
+    }
+
+    .feedback-correct {
+        color: #0f3f21;
+        background: linear-gradient(180deg, #defbe8, #cbf2da);
+        border: 1px solid rgba(21, 128, 61, 0.3);
+    }
+
+    .feedback-incorrect {
+        color: #5c1b17;
+        background: linear-gradient(180deg, #fdeceb, #fbe1e0);
+        border: 1px solid rgba(180, 35, 24, 0.28);
+    }
+
+    .feedback-answer {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.86rem;
+    }
+
+    .insight-card {
+        border-radius: var(--radius-md);
+        border-left: 4px solid;
+        padding: 0.8rem 0.88rem;
+        margin-bottom: 0.44rem;
+        font-size: 0.9rem;
+        line-height: 1.36;
+        box-shadow: 0 4px 10px rgba(17, 33, 44, 0.06);
+    }
+
+    .insight-positive {
+        border-left-color: var(--success);
+        background: rgba(235, 252, 244, 0.94);
+        color: #0f3f21;
+    }
+
+    .insight-neutral {
+        border-left-color: var(--brand);
+        background: rgba(236, 248, 248, 0.94);
+        color: #153645;
+    }
+
+    .insight-negative {
+        border-left-color: var(--danger);
+        background: rgba(254, 239, 238, 0.95);
+        color: #5a201b;
+    }
+
+    .badge {
+        border-radius: var(--radius-md);
+        border: 1px solid rgba(15, 118, 110, 0.22);
+        background: linear-gradient(180deg, rgba(15, 118, 110, 0.14), rgba(15, 118, 110, 0.05));
+        padding: 0.62rem 0.58rem;
+        text-align: center;
+        min-height: 116px;
+    }
+
+    .badge-locked {
+        opacity: 0.48;
+        filter: grayscale(0.38);
+    }
+
+    .badge-icon {
+        font-size: 1.25rem;
+        margin-bottom: 0.15rem;
+    }
+
+    .badge-name {
+        color: var(--ink-900);
+        font-size: 0.77rem;
+        font-weight: 800;
+        line-height: 1.2;
+    }
+
+    .badge-description {
+        color: var(--ink-500);
+        font-size: 0.66rem;
+        line-height: 1.2;
+        margin-top: 0.16rem;
+    }
+
+    .streak-container {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.45rem 0.55rem;
+        border-radius: var(--radius-sm);
+        background: rgba(245, 158, 11, 0.13);
+        border: 1px solid rgba(180, 83, 9, 0.2);
+        width: fit-content;
+    }
+
+    .streak-icon {
+        font-size: 1rem;
+    }
+
+    .streak-flame {
+        animation: flame-flicker 1.2s ease-in-out infinite;
+    }
+
+    .streak-text {
+        color: #8a3f0f;
+        font-size: 0.86rem;
+        font-weight: 800;
+    }
+
+    @keyframes flame-flicker {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.08); }
+    }
+
+    .timer {
+        display: inline-block;
+        width: 100%;
+        text-align: center;
+        border: 1px solid rgba(17, 33, 44, 0.12);
+        border-radius: var(--radius-sm);
+        background: rgba(255, 255, 255, 0.92);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.96rem;
+        font-weight: 700;
+        padding: 0.34rem 0.52rem;
+        color: var(--ink-900);
+    }
+
+    .timer-warning {
+        color: var(--danger);
+        border-color: rgba(180, 35, 24, 0.34);
+        background: rgba(254, 237, 236, 0.96);
+    }
+
     .progress-label {
         display: flex;
         justify-content: space-between;
-        margin-bottom: 0.15rem;
-        font-size: 0.75rem;
-    }
-    
-    /* ========================================
-       CELEBRATION
-       ======================================== */
-    .celebration {
-        text-align: center;
-        padding: 0.5rem;
-    }
-    
-    .celebration-title {
-        font-size: 1.1rem;
-        font-weight: bold;
-        margin: 0;
-    }
-    
-    /* ========================================
-       BUTTONS - Mobile optimized
-       ======================================== */
-    .stButton>button {
-        width: 100%;
-        border-radius: 6px;
-        padding: 0.6rem 0.8rem;
-        font-size: 16px;
-        font-weight: bold;
-        border: none;
-        transition: all 0.2s ease;
-        min-height: 44px;
-        touch-action: manipulation;
-        white-space: normal;
-        line-height: 1.15;
-    }
-    
-    .stButton>button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 3px 6px rgba(0,0,0,0.15);
-    }
-    
-    .stButton>button:active {
-        transform: translateY(0);
-    }
-    
-    .stButton {
         margin-bottom: 0.2rem;
-    }
-    
-    /* ========================================
-       TYPOGRAPHY - Small base for mobile
-       ======================================== */
-    h1 {
-        font-size: 1.2rem !important;
-        margin-bottom: 0.3rem !important;
-        margin-top: 0 !important;
-    }
-    
-    h2 {
-        font-size: 0.95rem !important;
-        margin-bottom: 0.25rem !important;
-        margin-top: 0.5rem !important;
-    }
-    
-    h3 {
-        font-size: 0.85rem !important;
-        margin-bottom: 0.2rem !important;
-        margin-top: 0.4rem !important;
-    }
-    
-    .stMarkdown p {
         font-size: 0.8rem;
-        margin-bottom: 0.25rem;
-    }
-    
-    /* ========================================
-       FORM ELEMENTS - Mobile optimized
-       ======================================== */
-    .stTextInput input {
-        font-size: 16px !important;
-        padding: 0.5rem;
-        -webkit-appearance: none;
-        border-radius: 6px;
+        color: var(--ink-700);
+        font-weight: 700;
     }
 
-    /* Hide number input spinners (desktop browsers) */
-    .stTextInput input[type="number"]::-webkit-outer-spin-button,
-    .stTextInput input[type="number"]::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
+    .progress-container {
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(17, 33, 44, 0.13);
+        overflow: hidden;
     }
 
-    .stTextInput input[type="number"] {
-        -moz-appearance: textfield;
-        appearance: textfield;
+    .progress-bar {
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--brand), #14b8a6);
+        transition: width 220ms ease;
     }
-    
-    /* Prevent zoom on focus for mobile */
-    input, select, textarea, button {
-        font-size: 16px !important;
+
+    .celebration {
+        border-radius: var(--radius-lg);
+        padding: 0.95rem 1rem;
+        text-align: center;
+        background: linear-gradient(130deg, rgba(15, 118, 110, 0.12), rgba(245, 158, 11, 0.12));
+        border: 1px solid rgba(17, 33, 44, 0.08);
     }
-    
-    .stRadio label {
-        font-size: 14px;
-        min-height: 44px;
-        display: flex;
-        align-items: center;
+
+    .celebration-title {
+        color: var(--ink-900);
+        font-size: clamp(1.16rem, 2vw, 1.5rem);
+        font-weight: 800;
+        letter-spacing: -0.02em;
     }
-    
-    .stRadio > div {
-        gap: 0.5rem;
+
+    .stButton button {
+        border-radius: 12px;
+        border: 1px solid rgba(17, 33, 44, 0.14);
+        padding: 0.56rem 0.82rem;
+        font-size: 0.94rem;
+        font-weight: 700;
+        transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
     }
-    
-    .stSelectbox label {
-        font-size: 14px;
+
+    .stButton button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 7px 16px rgba(17, 33, 44, 0.14);
+        border-color: rgba(17, 33, 44, 0.24);
     }
-    
-    .stSelectbox select {
-        font-size: 16px !important;
-        padding: 0.5rem;
+
+    .stButton button[kind="primary"] {
+        color: #ffffff;
+        border: 1px solid rgba(15, 118, 110, 0.55);
+        background: linear-gradient(140deg, var(--brand), var(--brand-strong));
     }
-    
-    /* Form submit buttons need proper touch targets */
-    [data-testid="stFormSubmitButton"] button {
-        min-height: 50px !important;
-        font-size: 16px !important;
+
+    .stButton button[kind="primary"]:hover {
+        border-color: rgba(15, 118, 110, 0.8);
+        box-shadow: 0 9px 20px rgba(15, 118, 110, 0.25);
     }
-    
-    /* ========================================
-       METRICS - Compact
-       ======================================== */
-    [data-testid="stMetricValue"] {
-        font-size: 0.9rem !important;
+
+    .stTextInput > div > div,
+    .stSelectbox > div > div,
+    .stMultiSelect > div > div,
+    .stNumberInput > div > div,
+    [data-baseweb="select"] > div {
+        border-radius: 11px;
+        border: 1px solid rgba(17, 33, 44, 0.16);
+        background: rgba(255, 255, 255, 0.94);
     }
-    
-    [data-testid="stMetricLabel"] {
-        font-size: 0.65rem !important;
+
+    .stTextInput input,
+    .stNumberInput input,
+    .stTextArea textarea {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.92rem !important;
     }
-    
-    [data-testid="stMetricDelta"] {
-        font-size: 0.6rem !important;
+
+    .stSlider [role="slider"] {
+        background: var(--brand);
+        border: none;
     }
-    
-    /* ========================================
-       DATAFRAME - Compact
-       ======================================== */
-    [data-testid="stDataFrame"] {
-        font-size: 0.7rem;
+
+    [data-baseweb="tab-list"] {
+        gap: 0.28rem;
     }
-    
-    /* ========================================
-       MISC ELEMENTS
-       ======================================== */
-    hr {
-        margin: 0.3rem 0;
-    }
-    
-    .stCaption {
-        font-size: 0.7rem;
-        color: rgba(0,0,0,0.6);
-    }
-    
-    .stAlert {
-        font-size: 0.8rem;
-        padding: 0.4rem;
-    }
-    
-    /* Expanders */
-    .streamlit-expanderHeader {
-        font-size: 0.8rem !important;
-    }
-    
-    /* Tabs */
+
     [data-baseweb="tab"] {
-        font-size: 0.75rem !important;
-        padding: 0.3rem 0.5rem !important;
+        border-radius: 10px;
+        border: 1px solid transparent;
+        background: rgba(255, 255, 255, 0.74);
+        font-weight: 700;
+        font-size: 0.84rem;
+        padding: 0.34rem 0.7rem;
     }
-    
-    /* Reduce element spacing */
+
+    [data-baseweb="tab"][aria-selected="true"] {
+        border-color: rgba(15, 118, 110, 0.36);
+        background: rgba(15, 118, 110, 0.11);
+        color: var(--brand-strong);
+    }
+
+    [data-testid="stExpander"] {
+        border-radius: var(--radius-md);
+        border: 1px solid rgba(17, 33, 44, 0.1);
+        background: rgba(255, 255, 255, 0.9);
+    }
+
+    [data-testid="stExpander"] details summary {
+        color: var(--ink-900);
+        font-weight: 700;
+    }
+
+    [data-testid="stMetric"] {
+        border: 1px solid rgba(17, 33, 44, 0.1);
+        border-radius: var(--radius-sm);
+        background: rgba(255, 255, 255, 0.9);
+        padding: 0.4rem 0.56rem;
+    }
+
+    [data-testid="stMetricLabel"] {
+        color: var(--ink-500);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-size: 0.65rem;
+        font-weight: 700;
+    }
+
+    [data-testid="stMetricValue"] {
+        color: var(--ink-900);
+        font-size: 1.1rem;
+        font-weight: 800;
+    }
+
+    [data-testid="stDataFrame"] {
+        border: 1px solid rgba(17, 33, 44, 0.12);
+        border-radius: var(--radius-sm);
+        overflow: hidden;
+    }
+
+    [data-testid="stDataFrameResizable"] {
+        font-size: 0.82rem;
+    }
+
+    .stAlert {
+        border-radius: var(--radius-sm);
+        border: 1px solid rgba(17, 33, 44, 0.14);
+    }
+
     .element-container {
-        margin-bottom: 0.3rem;
+        margin-bottom: 0.44rem;
     }
-    
-    /* Hide Streamlit branding */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    
-    /* Custom scrollbar */
-    ::-webkit-scrollbar {
-        width: 6px;
+
+    hr {
+        margin: 0.7rem 0;
+        border: none;
+        border-top: 1px solid rgba(17, 33, 44, 0.12);
     }
-    
-    ::-webkit-scrollbar-track {
-        background: #ecf0f1;
+
+    #MainMenu {
+        visibility: hidden;
     }
-    
-    ::-webkit-scrollbar-thumb {
-        background: #3498db;
-        border-radius: 3px;
+
+    footer {
+        visibility: hidden;
     }
-    
-    /* ========================================
-       TABLET BREAKPOINT (min-width: 480px)
-       ======================================== */
-    @media (min-width: 480px) {
-        .block-container {
-            padding-left: 0.75rem !important;
-            padding-right: 0.75rem !important;
+
+    @media (max-width: 900px) {
+        .main .block-container {
+            padding-left: 0.78rem;
+            padding-right: 0.78rem;
         }
-        
+
+        .hero-shell {
+            padding: 1.08rem 1.02rem;
+        }
+
         .stat-card {
-            padding: 0.5rem 0.4rem;
+            min-height: 108px;
+            padding: 0.76rem 0.78rem;
         }
-        
-        .stat-card-value {
-            font-size: 1.05rem;
-        }
-        
-        .stat-card-label {
-            font-size: 0.65rem;
-        }
-        
-        .stat-card-icon {
-            font-size: 1rem;
-        }
-        
+
         .question-display {
-            font-size: 1.4rem;
-            padding: 1rem;
-        }
-        
-        .badge {
-            padding: 0.45rem;
-            min-width: 65px;
-        }
-        
-        .badge-icon {
-            font-size: 1.2rem;
-        }
-        
-        .badge-name {
-            font-size: 0.65rem;
-        }
-        
-        h1 {
-            font-size: 1.35rem !important;
-        }
-        
-        h2 {
-            font-size: 1.05rem !important;
-        }
-        
-        h3 {
-            font-size: 0.9rem !important;
-        }
-        
-        .stMarkdown p {
-            font-size: 0.85rem;
-        }
-        
-        .timer {
-            font-size: 1.1rem;
-        }
-        
-        [data-testid="stMetricValue"] {
-            font-size: 1rem !important;
-        }
-        
-        [data-testid="stMetricLabel"] {
-            font-size: 0.7rem !important;
+            font-size: clamp(1.24rem, 5.8vw, 1.55rem);
+            padding: 0.92rem 0.74rem;
         }
     }
-    
-    /* ========================================
-       DESKTOP BREAKPOINT (min-width: 768px)
-       ======================================== */
-    @media (min-width: 768px) {
-        .main {
-            padding: 0.5rem;
+
+    @media (max-width: 600px) {
+        .main .block-container {
+            padding-top: 0.88rem;
+            padding-left: 0.62rem;
+            padding-right: 0.62rem;
         }
-        
-        .block-container {
-            padding-top: 1rem !important;
-            padding-bottom: 1rem !important;
-            padding-left: 1rem !important;
-            padding-right: 1rem !important;
+
+        .hero-chip {
+            font-size: 0.68rem;
+            padding: 0.22rem 0.5rem;
         }
-        
-        .stat-card {
-            padding: 0.6rem 0.5rem;
+
+        [data-baseweb="tab"] {
+            font-size: 0.76rem;
+            padding: 0.3rem 0.56rem;
         }
-        
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-        }
-        
-        .stat-card-value {
-            font-size: 1.2rem;
-            margin: 0.2rem 0;
-        }
-        
-        .stat-card-label {
-            font-size: 0.7rem;
-        }
-        
-        .stat-card-icon {
-            font-size: 1.1rem;
-        }
-        
-        .question-display {
-            font-size: 1.5rem;
-            padding: 1.25rem;
-            margin: 0.75rem 0;
-            position: sticky;
-            top: 0.25rem;
-            z-index: 100;
-        }
-        
-        .feedback-correct, .feedback-incorrect {
-            font-size: 1rem;
-            padding: 0.6rem;
-        }
-        
-        .combo-meter {
-            height: 18px;
-        }
-        
-        .combo-text {
-            font-size: 1rem;
-        }
-        
-        .badge {
-            padding: 0.6rem;
-            min-width: 80px;
-            margin: 0.2rem;
-        }
-        
-        .badge:hover {
-            transform: scale(1.05);
-        }
-        
-        .badge-icon {
-            font-size: 1.5rem;
-        }
-        
-        .badge-name {
-            font-size: 0.75rem;
-        }
-        
-        .badge-description {
-            font-size: 0.6rem;
-        }
-        
-        .insight-card {
-            padding: 0.6rem;
-            font-size: 0.85rem;
-        }
-        
-        .streak-icon {
-            font-size: 1.4rem;
-        }
-        
-        .streak-text {
-            font-size: 0.95rem;
-        }
-        
-        .timer {
-            font-size: 1.25rem;
-            padding: 0.4rem;
-        }
-        
-        .progress-container {
-            height: 14px;
-        }
-        
-        .progress-label {
-            font-size: 0.85rem;
-        }
-        
-        .celebration-title {
-            font-size: 1.4rem;
-        }
-        
-        h1 {
-            font-size: 1.5rem !important;
-            margin-bottom: 0.5rem !important;
-        }
-        
-        h2 {
-            font-size: 1.15rem !important;
-        }
-        
-        h3 {
-            font-size: 1rem !important;
-        }
-        
-        .stMarkdown p {
-            font-size: 0.9rem;
-        }
-        
-        .stButton>button {
-            padding: 0.5rem 1rem;
-        }
-        
-        .stTextInput input {
-            padding: 0.5rem;
-        }
-        
-        [data-testid="stMetricValue"] {
-            font-size: 1.2rem !important;
-        }
-        
-        [data-testid="stMetricLabel"] {
-            font-size: 0.8rem !important;
-        }
-        
-        [data-testid="stDataFrame"] {
-            font-size: 0.8rem;
-        }
-        
-        hr {
-            margin: 0.5rem 0;
-        }
-        
-        .stCaption {
-            font-size: 0.8rem;
-        }
-        
-        .element-container {
-            margin-bottom: 0.5rem;
-        }
-        
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-    }
-    
-    /* ========================================
-       LARGE DESKTOP (min-width: 1024px)
-       ======================================== */
-    @media (min-width: 1024px) {
-        .stat-card {
-            padding: 0.75rem;
-        }
-        
-        .stat-card-value {
-            font-size: 1.4rem;
-        }
-        
-        .stat-card-label {
-            font-size: 0.75rem;
-        }
-        
-        .question-display {
-            font-size: 1.75rem;
-            padding: 1.5rem;
-        }
-        
-        .badge {
-            min-width: 90px;
-        }
-        
-        .badge-icon {
-            font-size: 1.8rem;
-        }
-        
-        .badge-name {
-            font-size: 0.85rem;
-        }
-        
-        h1 {
-            font-size: 1.75rem !important;
-        }
-        
-        h2 {
-            font-size: 1.25rem !important;
-        }
-        
-        [data-testid="stMetricValue"] {
-            font-size: 1.4rem !important;
+
+        [data-testid="stHorizontalBlock"] {
+            gap: 0.4rem;
         }
     }
     </style>

@@ -1,259 +1,278 @@
 """Visualization functions using Plotly."""
-import plotly.graph_objects as go
-import plotly.express as px
+
+# pyright: reportMissingImports=false
+
+from __future__ import annotations
+
 import pandas as pd
-from typing import Optional
+import plotly.express as px
+import plotly.graph_objects as go
+
+
+def _apply_base_layout(fig: go.Figure, title: str, height: int = 360) -> go.Figure:
+    fig.update_layout(
+        title=title,
+        template="plotly_white",
+        height=height,
+        margin=dict(l=20, r=20, t=56, b=20),
+        plot_bgcolor="rgba(255,255,255,0)",
+        paper_bgcolor="rgba(255,255,255,0)",
+        font=dict(family="Manrope, Segoe UI, sans-serif", color="#11212c"),
+        title_font=dict(size=17, color="#11212c"),
+    )
+    return fig
 
 
 def create_accuracy_trend_chart(data: pd.DataFrame) -> go.Figure:
-    """Create line chart showing accuracy over time.
-    
-    Args:
-        data: DataFrame with 'date' and 'accuracy' columns
-        
-    Returns:
-        Plotly Figure
-    """
+    """Create line chart showing accuracy over time."""
     fig = go.Figure()
-    
     if not data.empty:
-        fig.add_trace(go.Scatter(
-            x=data['date'],
-            y=data['accuracy'],
-            mode='lines+markers',
-            name='Accuracy',
-            line=dict(color='#2ecc71', width=3),
-            marker=dict(size=8)
-        ))
-    
-    fig.update_layout(
-        title='Accuracy Trend',
-        xaxis_title='Date',
-        yaxis_title='Accuracy (%)',
-        yaxis=dict(range=[0, 105]),
-        template='plotly_white',
-        height=400
-    )
-    
+        fig.add_trace(
+            go.Scatter(
+                x=data["date"],
+                y=data["accuracy"],
+                mode="lines+markers",
+                name="Accuracy",
+                line=dict(color="#0f766e", width=3),
+                marker=dict(size=7, color="#f59e0b", line=dict(width=1, color="#ffffff")),
+                hovertemplate="%{x|%b %d}<br>%{y:.1f}%<extra></extra>",
+            )
+        )
+        rolling = data["accuracy"].rolling(window=3, min_periods=1).mean()
+        fig.add_trace(
+            go.Scatter(
+                x=data["date"],
+                y=rolling,
+                mode="lines",
+                name="3-session trend",
+                line=dict(color="#115e59", width=2, dash="dot"),
+                hovertemplate="%{x|%b %d}<br>%{y:.1f}% trend<extra></extra>",
+            )
+        )
+
+    _apply_base_layout(fig, "Accuracy Trend")
+    fig.update_yaxes(range=[0, 103], ticksuffix="%", gridcolor="rgba(17,33,44,0.08)")
+    fig.update_xaxes(gridcolor="rgba(17,33,44,0.05)")
     return fig
 
 
 def create_speed_trend_chart(data: pd.DataFrame) -> go.Figure:
-    """Create line chart showing average time per question over time.
-    
-    Args:
-        data: DataFrame with 'date' and 'avg_time' columns
-        
-    Returns:
-        Plotly Figure
-    """
+    """Create line chart showing average time per question over time."""
     fig = go.Figure()
-    
     if not data.empty:
-        fig.add_trace(go.Scatter(
-            x=data['date'],
-            y=data['avg_time'],
-            mode='lines+markers',
-            name='Avg Time',
-            line=dict(color='#3498db', width=3),
-            marker=dict(size=8)
-        ))
-    
-    fig.update_layout(
-        title='Speed Trend',
-        xaxis_title='Date',
-        yaxis_title='Average Time (seconds)',
-        template='plotly_white',
-        height=400
-    )
-    
+        fig.add_trace(
+            go.Scatter(
+                x=data["date"],
+                y=data["avg_time"],
+                mode="lines+markers",
+                name="Avg time",
+                line=dict(color="#2563eb", width=3),
+                marker=dict(size=7, color="#93c5fd", line=dict(width=1, color="#ffffff")),
+                hovertemplate="%{x|%b %d}<br>%{y:.2f}s<extra></extra>",
+            )
+        )
+
+    _apply_base_layout(fig, "Speed Trend")
+    fig.update_yaxes(title="Seconds", gridcolor="rgba(17,33,44,0.08)")
+    fig.update_xaxes(gridcolor="rgba(17,33,44,0.05)")
+    return fig
+
+
+def create_question_volume_chart(data: pd.DataFrame) -> go.Figure:
+    """Create bar chart showing question volume by day."""
+    fig = go.Figure()
+    if not data.empty:
+        fig.add_trace(
+            go.Bar(
+                x=data["date"],
+                y=data["questions"],
+                marker=dict(color="#f59e0b"),
+                name="Questions",
+                hovertemplate="%{x|%b %d}<br>%{y} questions<extra></extra>",
+            )
+        )
+
+    _apply_base_layout(fig, "Question Volume")
+    fig.update_yaxes(title="Questions", gridcolor="rgba(17,33,44,0.08)")
+    fig.update_xaxes(gridcolor="rgba(17,33,44,0.05)")
     return fig
 
 
 def create_category_breakdown_chart(data: pd.DataFrame) -> go.Figure:
-    """Create bar chart showing performance by category.
-    
-    Args:
-        data: DataFrame with category performance stats
-        
-    Returns:
-        Plotly Figure
-    """
+    """Create grouped bar chart showing category accuracy and speed."""
     if data.empty:
-        return go.Figure()
-    
+        return _apply_base_layout(go.Figure(), "Performance by Category")
+
+    display = data.copy()
+    display["question_type"] = display["question_type"].str.title()
+    display = display.sort_values("questions_answered", ascending=False)
+
     fig = go.Figure()
-    
-    fig.add_trace(go.Bar(
-        x=data['question_type'],
-        y=data['accuracy'],
-        name='Accuracy (%)',
-        marker_color='#2ecc71'
-    ))
-    
-    fig.update_layout(
-        title='Performance by Category',
-        xaxis_title='Category',
-        yaxis_title='Accuracy (%)',
-        yaxis=dict(range=[0, 105]),
-        template='plotly_white',
-        height=400
+    fig.add_trace(
+        go.Bar(
+            x=display["question_type"],
+            y=display["accuracy"],
+            name="Accuracy",
+            marker_color="#0f766e",
+            hovertemplate="%{x}<br>%{y:.1f}% accuracy<extra></extra>",
+        )
     )
-    
+    fig.add_trace(
+        go.Scatter(
+            x=display["question_type"],
+            y=display["avg_time"],
+            name="Avg time",
+            mode="lines+markers",
+            yaxis="y2",
+            line=dict(color="#f59e0b", width=2),
+            marker=dict(size=8),
+            hovertemplate="%{x}<br>%{y:.2f}s avg<extra></extra>",
+        )
+    )
+
+    _apply_base_layout(fig, "Performance by Category")
+    fig.update_layout(
+        barmode="group",
+        yaxis=dict(title="Accuracy %", range=[0, 103], ticksuffix="%", gridcolor="rgba(17,33,44,0.08)"),
+        yaxis2=dict(title="Avg seconds", overlaying="y", side="right", showgrid=False),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    )
+    fig.update_xaxes(gridcolor="rgba(17,33,44,0.05)")
     return fig
 
 
 def create_category_radar_chart(data: pd.DataFrame) -> go.Figure:
-    """Create radar chart showing performance across categories.
-    
-    Args:
-        data: DataFrame with category performance stats
-        
-    Returns:
-        Plotly Figure
-    """
+    """Create radar chart showing performance across categories."""
     if data.empty:
-        return go.Figure()
-    
+        return _apply_base_layout(go.Figure(), "Category Balance", 420)
+
+    display = data.copy()
+    display["question_type"] = display["question_type"].str.title()
+
     fig = go.Figure()
-    
-    fig.add_trace(go.Scatterpolar(
-        r=data['accuracy'].tolist(),
-        theta=data['question_type'].tolist(),
-        fill='toself',
-        name='Accuracy',
-        line_color='#2ecc71'
-    ))
-    
+    fig.add_trace(
+        go.Scatterpolar(
+            r=display["accuracy"].tolist(),
+            theta=display["question_type"].tolist(),
+            fill="toself",
+            name="Accuracy",
+            line=dict(color="#0f766e", width=2),
+            fillcolor="rgba(15,118,110,0.24)",
+        )
+    )
+
+    _apply_base_layout(fig, "Category Balance", 420)
     fig.update_layout(
         polar=dict(
-            radialaxis=dict(
-                visible=True,
-                range=[0, 100]
-            )
+            radialaxis=dict(visible=True, range=[0, 100], ticksuffix="%", gridcolor="rgba(17,33,44,0.12)")
         ),
-        title='Category Performance Radar',
-        template='plotly_white',
-        height=500
+        showlegend=False,
     )
-    
+    return fig
+
+
+def create_weekly_consistency_chart(data: pd.DataFrame) -> go.Figure:
+    """Create week-level question consistency chart."""
+    fig = go.Figure()
+    if not data.empty:
+        fig.add_trace(
+            go.Bar(
+                x=data["week_start"],
+                y=data["questions"],
+                marker_color="#0f766e",
+                name="Questions",
+                hovertemplate="Week of %{x|%b %d}<br>%{y} questions<extra></extra>",
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=data["week_start"],
+                y=data["accuracy"],
+                mode="lines+markers",
+                name="Accuracy",
+                yaxis="y2",
+                line=dict(color="#f59e0b", width=2),
+                hovertemplate="Week of %{x|%b %d}<br>%{y:.1f}% accuracy<extra></extra>",
+            )
+        )
+
+    _apply_base_layout(fig, "Weekly Consistency", 340)
+    fig.update_layout(
+        yaxis=dict(title="Questions", gridcolor="rgba(17,33,44,0.08)"),
+        yaxis2=dict(title="Accuracy %", overlaying="y", side="right", showgrid=False),
+    )
     return fig
 
 
 def create_heatmap_chart(data: pd.DataFrame) -> go.Figure:
-    """Create heatmap showing performance by time of day.
-    
-    Args:
-        data: DataFrame with 'hour' and 'accuracy' columns
-        
-    Returns:
-        Plotly Figure
-    """
+    """Create heatmap showing performance by time of day."""
     if data.empty:
-        return go.Figure()
-    
-    # Create a 24-hour array
-    hours = list(range(24))
-    accuracy = [0] * 24
-    
-    for _, row in data.iterrows():
-        hour = int(row['hour'])
-        accuracy[hour] = row['accuracy']
-    
-    # Create heatmap data
-    heatmap_data = []
-    for i in range(0, 24, 6):
-        heatmap_data.append(accuracy[i:i+6])
-    
-    fig = go.Figure(data=go.Heatmap(
-        z=heatmap_data,
-        x=['0-5', '6-11', '12-17', '18-23'],
-        y=['Morning', 'Afternoon', 'Evening', 'Night'],
-        colorscale='RdYlGn',
-        text=heatmap_data,
-        texttemplate='%{text:.1f}%',
-        textfont={"size": 14},
-        colorbar=dict(title="Accuracy %")
-    ))
-    
-    fig.update_layout(
-        title='Performance by Time of Day',
-        template='plotly_white',
-        height=400
+        return _apply_base_layout(go.Figure(), "Performance by Time of Day")
+
+    display = pd.DataFrame(data).copy()
+    windows = display["hour"].astype(int).map(lambda h: f"{h:02d}:00")
+    display = display.assign(window=windows)
+
+    fig = px.density_heatmap(
+        display,
+        x="window",
+        y=["Accuracy"] * len(display),
+        z="accuracy",
+        color_continuous_scale="Tealgrn",
     )
-    
+    fig.update_traces(hovertemplate="%{x}<br>%{z:.1f}% accuracy<extra></extra>")
+    _apply_base_layout(fig, "Performance by Time of Day", 320)
     return fig
 
 
 def create_progress_gauge(current: float, target: float, title: str = "Progress") -> go.Figure:
-    """Create gauge chart for goal progress.
-    
-    Args:
-        current: Current value
-        target: Target value
-        title: Chart title
-        
-    Returns:
-        Plotly Figure
-    """
-    progress = (current / target * 100) if target > 0 else 0
-    
-    fig = go.Figure(go.Indicator(
-        mode="gauge+number+delta",
-        value=current,
-        domain={'x': [0, 1], 'y': [0, 1]},
-        title={'text': title},
-        delta={'reference': target},
-        gauge={
-            'axis': {'range': [None, target]},
-            'bar': {'color': "#2ecc71"},
-            'steps': [
-                {'range': [0, target * 0.5], 'color': "#ecf0f1"},
-                {'range': [target * 0.5, target * 0.8], 'color': "#d5dbdb"}
-            ],
-            'threshold': {
-                'line': {'color': "red", 'width': 4},
-                'thickness': 0.75,
-                'value': target
-            }
-        }
-    ))
-    
-    fig.update_layout(
-        template='plotly_white',
-        height=300
+    """Create gauge chart for goal progress."""
+    safe_target = max(target, 1)
+    fig = go.Figure(
+        go.Indicator(
+            mode="gauge+number+delta",
+            value=current,
+            number={"suffix": "%"},
+            title={"text": title},
+            delta={"reference": safe_target},
+            gauge={
+                "axis": {"range": [0, max(safe_target * 1.2, 100)]},
+                "bar": {"color": "#0f766e"},
+                "steps": [
+                    {"range": [0, safe_target * 0.7], "color": "#fee2e2"},
+                    {"range": [safe_target * 0.7, safe_target], "color": "#fef3c7"},
+                    {"range": [safe_target, max(safe_target * 1.2, 100)], "color": "#dcfce7"},
+                ],
+                "threshold": {
+                    "line": {"color": "#b42318", "width": 3},
+                    "thickness": 0.75,
+                    "value": safe_target,
+                },
+            },
+        )
     )
-    
+    _apply_base_layout(fig, title, 280)
     return fig
 
 
 def create_streak_calendar(data: pd.DataFrame, weeks: int = 8) -> go.Figure:
-    """Create calendar heatmap for streak visualization.
-    
-    Args:
-        data: DataFrame with 'date' and 'sessions_completed' columns
-        weeks: Number of weeks to show
-        
-    Returns:
-        Plotly Figure
-    """
+    """Create a compact streak activity calendar."""
     if data.empty:
-        return go.Figure()
-    
-    # This is a simplified version - full calendar would be more complex
+        return _apply_base_layout(go.Figure(), "Activity Calendar", 260)
+
+    display = data.copy()
+    display["date"] = pd.to_datetime(display["date"])
+    cutoff = display["date"].max() - pd.Timedelta(weeks=weeks)
+    display = display[display["date"] >= cutoff]
+
     fig = px.density_heatmap(
-        data,
-        x='date',
-        y=[1] * len(data),
-        z='sessions_completed',
-        color_continuous_scale='Greens'
+        display,
+        x="date",
+        y=["Sessions"] * len(display),
+        z="sessions_completed",
+        color_continuous_scale="Teal",
     )
-    
-    fig.update_layout(
-        title='Activity Calendar',
-        template='plotly_white',
-        height=200,
-        yaxis=dict(visible=False)
-    )
-    
+    fig.update_traces(hovertemplate="%{x|%b %d}<br>%{z} sessions<extra></extra>")
+    _apply_base_layout(fig, "Activity Calendar", 260)
+    fig.update_yaxes(visible=False)
     return fig

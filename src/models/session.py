@@ -23,6 +23,7 @@ class QuestionResult:
     is_correct: bool
     time_taken: float
     timestamp: datetime
+    was_skipped: bool = False
 
 
 @dataclass
@@ -35,6 +36,10 @@ class SessionState:
     total_score: int = 0
     start_time: datetime = field(default_factory=datetime.now)
     is_complete: bool = False
+    # Stamped each time a new current_question is set, so time_taken excludes
+    # the previous answer's submission overhead. Falls back to start_time on the
+    # first question.
+    question_started_at: Optional[datetime] = None
 
 
 @dataclass

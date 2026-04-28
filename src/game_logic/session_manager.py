@@ -61,10 +61,10 @@ class SessionManager:
     
     def start_session(self, config: SessionConfig) -> SessionState:
         """Initialize a new practice session.
-        
+
         Args:
             config: Session configuration
-            
+
         Returns:
             Initial session state
         """
@@ -77,10 +77,11 @@ class SessionManager:
             start_time=datetime.now(),
             is_complete=False
         )
-        
+
         # Generate first question
         state.current_question = self.get_next_question(state)
-        
+        state.question_started_at = datetime.now()
+
         return state
     
     def get_next_question(self, state: SessionState) -> Question:
@@ -117,7 +118,12 @@ class SessionManager:
             else:
                 available_generators = self.category_generators['mixed']
         else:
-            available_generators = self.category_generators[state.config.category]
+            if state.config.category in self.category_generators:
+                available_generators = self.category_generators[state.config.category]
+            elif state.config.category in self.generators:
+                available_generators = [state.config.category]
+            else:
+                available_generators = self.category_generators['mixed']
         
         # Select random generator from available ones
         generator_key = random.choice(available_generators)
@@ -128,58 +134,72 @@ class SessionManager:
         
         return question
     
-    def submit_answer(self, state: SessionState, answer: str) -> QuestionResult:
+    def submit_answer(
+        self,
+        state: SessionState,
+        answer: str,
+        was_skipped: bool = False,
+    ) -> QuestionResult:
         """Process a submitted answer.
-        
+
         Args:
             state: Current session state
             answer: User's answer
-            
+            was_skipped: True when the user explicitly skipped (not an attempt).
+                Skips don't count as correct, but downstream analytics filter
+                them out so they don't poison accuracy / weak-area routing.
+
         Returns:
             QuestionResult object
         """
         if not state.current_question:
             raise ValueError("No current question")
-        
-        # Validate answer
-        is_correct = self.validator.validate(answer, state.current_question)
-        
-        # Calculate time taken
-        if state.questions_answered:
-            time_taken = (datetime.now() - state.questions_answered[-1].timestamp).total_seconds()
-        else:
-            time_taken = (datetime.now() - state.start_time).total_seconds()
-        
+
+        # Skips are never correct; only validate real attempts.
+        is_correct = (
+            False if was_skipped
+            else self.validator.validate(answer, state.current_question)
+        )
+
+        # Time the user spent on THIS question (excluding the previous answer's
+        # submission overhead). Falls back to start_time for the very first
+        # question if question_started_at wasn't stamped.
+        question_started_at = state.question_started_at or state.start_time
+        time_taken = (datetime.now() - question_started_at).total_seconds()
+
         # Create result
         result = QuestionResult(
             question=state.current_question,
             user_answer=answer,
             is_correct=is_correct,
             time_taken=time_taken,
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
+            was_skipped=was_skipped,
         )
-        
-        # Update combo
+
+        # Update combo. Skips reset the combo (same as a wrong answer) — we
+        # don't want to reward stalling on a hard one and skipping for free.
         if is_correct:
             state.combo_count += 1
         else:
             state.combo_count = 0
-        
+
         # Calculate and add score
         score = self.scorer.calculate_question_score(result, state.combo_count)
         state.total_score += score
-        
+
         # Add to answered questions
         state.questions_answered.append(result)
-        
+
         # Check if session should end
         if self.check_session_end(state):
             state.is_complete = True
             state.current_question = None
         else:
-            # Generate next question
+            # Generate next question and stamp its start time.
             state.current_question = self.get_next_question(state)
-        
+            state.question_started_at = datetime.now()
+
         return result
     
     def check_session_end(self, state: SessionState) -> bool:
@@ -194,11 +214,13 @@ class SessionManager:
         if state.config.mode_type == 'sprint':
             # End if time limit reached
             elapsed = (datetime.now() - state.start_time).total_seconds()
-            return elapsed >= state.config.duration_seconds
+            duration_limit = int(state.config.duration_seconds or 0)
+            return elapsed >= duration_limit
         
         elif state.config.mode_type == 'marathon':
             # End if question count reached
-            return len(state.questions_answered) >= state.config.question_count
+            target_count = int(state.config.question_count or 0)
+            return len(state.questions_answered) >= target_count
         
         elif state.config.mode_type == 'targeted':
             # End after default question count

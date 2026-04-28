@@ -31,9 +31,9 @@ def main():
     """Main application entry point."""
     # Page configuration
     st.set_page_config(
-        page_title="Mental Math Trainer",
+        page_title="Mental Math Coach",
         page_icon="🧮",
-        layout="centered",
+        layout="wide",
         initial_sidebar_state="auto"
     )
     

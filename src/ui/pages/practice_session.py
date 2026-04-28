@@ -59,6 +59,12 @@ def show_practice_session(db_manager):
         st.session_state.active_session = None
         st.session_state.page = "results"
         st.rerun()
+
+    mode_label = session.config.mode_type.title()
+    category_label = session.config.category.title()
+    difficulty_label = session.config.difficulty.title()
+    st.markdown(f"### {mode_label} Session")
+    st.caption(f"{category_label} · {difficulty_label}")
     
     # Top Bar - simplified 3 columns for mobile
     col1, col2, col3 = st.columns([2, 2, 1])
@@ -66,7 +72,8 @@ def show_practice_session(db_manager):
     with col1:
         if session.config.mode_type == 'sprint':
             elapsed = (datetime.now() - session.start_time).total_seconds()
-            remaining = int(session.config.duration_seconds - elapsed)
+            duration_limit = int(session.config.duration_seconds or 0)
+            remaining = int(duration_limit - elapsed)
             if remaining <= 0:
                 session.is_complete = True
                 st.rerun()
@@ -94,6 +101,13 @@ def show_practice_session(db_manager):
     
     # Score display - compact
     st.markdown(f"**🏆 {session.total_score:,}**")
+
+    if session.config.mode_type in ['marathon', 'targeted'] and session.config.question_count:
+        progress_bar_with_label(
+            current=len(session.questions_answered),
+            total=session.config.question_count,
+            label="Session Progress",
+        )
     
     if st.session_state.get('confirm_quit', False):
         st.warning("⚠️ Click ❌ again to quit")
@@ -138,7 +152,8 @@ def show_practice_session(db_manager):
     else:
         # Show current question
         if session.current_question:
-            question_display(session.current_question)
+            current_question = session.current_question
+            question_display(current_question)
 
             # If the text-input on_change callback already submitted an answer in this rerun,
             # we must NOT also submit via the Enter button, otherwise the same answer can be
@@ -186,7 +201,7 @@ def show_practice_session(db_manager):
 
                 is_correct = st.session_state.session_manager.validator.validate(
                     answer,
-                    session.current_question,
+                    current_question,
                 )
                 if not is_correct:
                     return
@@ -247,7 +262,9 @@ def show_practice_session(db_manager):
 
             def _should_allow_fraction_keyboard() -> bool:
                 """Return True if this question likely needs '/' input."""
-                q = session.current_question
+                q = current_question
+                if q is None:
+                    return False
                 try:
                     acceptable = q.acceptable_answers or []
                 except Exception:
@@ -296,8 +313,8 @@ def show_practice_session(db_manager):
                   const TYPE = {json.dumps(desired_type)};
                   const STEP = {json.dumps(desired_step)};
                   const SHOULD_CLEAR = {json.dumps(mm_clear_answer)};
-                  const EXPECTED_ANSWERS = {json.dumps([str(a) for a in (session.current_question.acceptable_answers or [])])};
-                  const QUESTION_TOKEN = {json.dumps(f"{session.current_question.question_text}|{session.current_question.correct_answer}")};
+                  const EXPECTED_ANSWERS = {json.dumps([str(a) for a in (current_question.acceptable_answers or [])])};
+                  const QUESTION_TOKEN = {json.dumps(f"{current_question.question_text}|{current_question.correct_answer}")};
 
                   function _mmNormalizeForCompare(raw) {{
                     try {{
