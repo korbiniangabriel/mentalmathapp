@@ -28,6 +28,26 @@ def get_custom_css() -> str:
         --radius-sm: 10px;
     }
 
+    /* Dark-mode tokens (defined only; not auto-applied). Toggle by setting
+       data-theme="dark" on a parent element in a future batch. */
+    [data-theme="dark"] {
+        --bg-0: #0b1419;
+        --bg-1: #122029;
+        --paper: #142632;
+        --ink-900: #eaf2f5;
+        --ink-700: #b8c6cf;
+        --ink-500: #8395a0;
+        --line: #20323d;
+        --brand: #14b8a6;
+        --brand-strong: #0f766e;
+        --accent: #fbbf24;
+        --accent-soft: #3b2e0e;
+        --success: #34d399;
+        --danger: #f87171;
+        --warning: #fbbf24;
+        --shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
+    }
+
     * {
         -webkit-tap-highlight-color: transparent;
         box-sizing: border-box;
@@ -575,6 +595,197 @@ def get_custom_css() -> str:
 
     footer {
         visibility: hidden;
+    }
+
+    /* ---------- Combo escalation animations ---------- */
+    /* Stages: x3 = pulse, x5 = glow, x10 = ring rotation, x15 = sparkle ring */
+    .combo-stage-1 .combo-meter-fill {
+        animation: combo-pulse 1.4s ease-in-out infinite;
+    }
+    .combo-stage-2 .combo-meter-fill {
+        animation: combo-pulse 1.1s ease-in-out infinite,
+                   combo-glow 1.6s ease-in-out infinite;
+    }
+    .combo-stage-3 .combo-meter-fill {
+        animation: combo-pulse 0.9s ease-in-out infinite,
+                   combo-glow 1.3s ease-in-out infinite;
+    }
+    .combo-stage-3::before {
+        content: "";
+        position: absolute;
+        inset: -6px;
+        border-radius: 999px;
+        border: 2px solid rgba(245, 158, 11, 0.55);
+        animation: combo-ring-rotate 2.4s linear infinite;
+        pointer-events: none;
+    }
+    .combo-stage-4 .combo-meter-fill {
+        animation: combo-pulse 0.7s ease-in-out infinite,
+                   combo-glow 1s ease-in-out infinite;
+    }
+    .combo-stage-4::before {
+        content: "";
+        position: absolute;
+        inset: -6px;
+        border-radius: 999px;
+        border: 2px solid rgba(245, 158, 11, 0.7);
+        animation: combo-ring-rotate 1.8s linear infinite;
+        pointer-events: none;
+    }
+    .combo-stage-4::after {
+        content: "✦ ✦ ✦";
+        position: absolute;
+        inset: -16px 0 auto 0;
+        text-align: center;
+        color: var(--accent);
+        font-size: 0.7rem;
+        letter-spacing: 0.45em;
+        animation: combo-sparkle 1.2s ease-in-out infinite;
+        pointer-events: none;
+    }
+    .combo-glow {
+        position: relative;
+    }
+
+    @keyframes combo-pulse {
+        0%, 100% { transform: scaleY(1); }
+        50% { transform: scaleY(1.18); }
+    }
+    @keyframes combo-glow {
+        0%, 100% { box-shadow: 0 0 0 rgba(245, 158, 11, 0); }
+        50% { box-shadow: 0 0 14px rgba(245, 158, 11, 0.65); }
+    }
+    @keyframes combo-ring-rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    @keyframes combo-sparkle {
+        0%, 100% { opacity: 0.35; transform: translateY(0); }
+        50% { opacity: 1; transform: translateY(-2px); }
+    }
+
+    /* ---------- Count-up score chip ---------- */
+    .score-chip {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 0.35rem;
+        padding: 0.32rem 0.7rem;
+        border-radius: 999px;
+        background: linear-gradient(140deg, rgba(15, 118, 110, 0.14), rgba(245, 158, 11, 0.14));
+        border: 1px solid rgba(15, 118, 110, 0.22);
+        font-family: "JetBrains Mono", monospace;
+        font-weight: 700;
+        color: var(--ink-900);
+    }
+    .score-chip-label {
+        font-size: 0.7rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-500);
+    }
+    .score-chip-value {
+        display: inline-block;
+        font-size: 1.04rem;
+        animation: score-count-up 380ms ease-out;
+    }
+    @keyframes score-count-up {
+        0% { transform: translateY(6px) scale(0.9); opacity: 0; }
+        60% { transform: translateY(-1px) scale(1.06); opacity: 1; }
+        100% { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    /* ---------- Timer warn pulse for sprint countdowns < 10s ---------- */
+    .timer--pulse-warn {
+        color: var(--danger);
+        border-color: rgba(180, 35, 24, 0.45);
+        background: rgba(254, 237, 236, 0.96);
+        animation: timer-pulse-warn 0.9s ease-in-out infinite;
+    }
+    @keyframes timer-pulse-warn {
+        0%, 100% { box-shadow: 0 0 0 rgba(180, 35, 24, 0); transform: scale(1); }
+        50% { box-shadow: 0 0 14px rgba(180, 35, 24, 0.55); transform: scale(1.03); }
+    }
+
+    /* ---------- Milestone hint chip ---------- */
+    .milestone-hint {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.5rem 0.7rem;
+        border-radius: 999px;
+        background: rgba(245, 158, 11, 0.12);
+        border: 1px solid rgba(180, 83, 9, 0.28);
+        margin-bottom: 0.4rem;
+    }
+    .milestone-hint-icon { font-size: 1rem; }
+    .milestone-hint-text {
+        color: #6b3a05;
+        font-size: 0.84rem;
+        font-weight: 700;
+    }
+    .milestone-hint-progress {
+        flex: 1;
+        height: 6px;
+        background: rgba(180, 83, 9, 0.18);
+        border-radius: 999px;
+        overflow: hidden;
+    }
+    .milestone-hint-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent), #f97316);
+        border-radius: 999px;
+    }
+
+    /* ---------- Friendly empty state ---------- */
+    .empty-state {
+        border-radius: var(--radius-lg);
+        border: 1px dashed rgba(15, 118, 110, 0.38);
+        background:
+            linear-gradient(135deg, rgba(15, 118, 110, 0.06), rgba(245, 158, 11, 0.08));
+        padding: 1.4rem 1.3rem;
+        text-align: center;
+        margin-bottom: 0.8rem;
+    }
+    .empty-state-title {
+        color: var(--ink-900);
+        font-size: 1.18rem;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+        margin-bottom: 0.3rem;
+    }
+    .empty-state-body {
+        color: var(--ink-700);
+        font-size: 0.94rem;
+        line-height: 1.45;
+        max-width: 520px;
+        margin: 0 auto 0.4rem auto;
+    }
+
+    /* ---------- Big primary CTA card ---------- */
+    .primary-cta {
+        border-radius: var(--radius-lg);
+        padding: 1.1rem 1.2rem;
+        background: linear-gradient(135deg, var(--brand), var(--brand-strong));
+        color: #ffffff;
+        box-shadow: 0 18px 36px rgba(15, 118, 110, 0.28);
+        margin-bottom: 0.6rem;
+    }
+    .primary-cta-eyebrow {
+        font-size: 0.74rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        opacity: 0.82;
+    }
+    .primary-cta-title {
+        font-size: clamp(1.2rem, 2.2vw, 1.6rem);
+        font-weight: 800;
+        margin-top: 0.2rem;
+        letter-spacing: -0.01em;
+    }
+    .primary-cta-sub {
+        font-size: 0.92rem;
+        opacity: 0.92;
+        margin-top: 0.25rem;
     }
 
     @media (max-width: 900px) {

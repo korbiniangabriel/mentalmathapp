@@ -1,11 +1,33 @@
 """Reusable UI components."""
 
 from collections.abc import Iterable
+from typing import Callable, Optional
 
 import streamlit as st
 
 from src.models.question import Question
 from src.models.user_stats import Badge
+
+
+def _combo_stage(combo_count: int) -> tuple[int, float]:
+    """Return (stage, scoring_multiplier) for a given combo count.
+
+    Stages:
+        0: no animation        (combo < 3)
+        1: subtle pulse        (combo >= 3)
+        2: glow                 (combo >= 5)
+        3: ring rotation        (combo >= 10)
+        4: sparkle ring         (combo >= 15)
+    """
+    if combo_count >= 15:
+        return 4, 3.0
+    if combo_count >= 10:
+        return 3, 2.5
+    if combo_count >= 5:
+        return 2, 2.0
+    if combo_count >= 3:
+        return 1, 1.5
+    return 0, 1.0
 
 
 def hero_panel(title: str, subtitle: str, chips: Iterable[str] | None = None):
@@ -55,17 +77,9 @@ def coach_note(title: str, text: str, tone: str = "neutral"):
 
 
 def combo_meter(combo_count: int, max_combo: int = 15):
-    """Display combo meter."""
+    """Display combo meter (backward-compatible: no escalation visuals)."""
     percentage = min(combo_count / max_combo * 100, 100)
-    display_multiplier = 1.0
-    if combo_count >= 15:
-        display_multiplier = 3.0
-    elif combo_count >= 10:
-        display_multiplier = 2.5
-    elif combo_count >= 5:
-        display_multiplier = 2.0
-    elif combo_count >= 3:
-        display_multiplier = 1.5
+    _, display_multiplier = _combo_stage(combo_count)
 
     st.markdown(
         f"""
@@ -76,6 +90,103 @@ def combo_meter(combo_count: int, max_combo: int = 15):
         """,
         unsafe_allow_html=True,
     )
+
+
+def combo_glow(combo_count: int, max_combo: int = 15):
+    """Display combo meter with escalation visuals (pulse/glow/ring/sparkle).
+
+    Use this in places that want the celebratory effect; ``combo_meter`` is
+    kept for callers that want the plain bar.
+    """
+    percentage = min(combo_count / max_combo * 100, 100)
+    stage, display_multiplier = _combo_stage(combo_count)
+    stage_class = f"combo-stage-{stage}" if stage > 0 else ""
+    wrapper_class = "combo-glow" if stage > 0 else ""
+
+    st.markdown(
+        f"""
+        <div class="{wrapper_class}">
+            <div class="combo-text">Combo x{combo_count} ({display_multiplier:.1f}x scoring)</div>
+            <div class="combo-meter {stage_class}">
+                <div class="combo-meter-fill" style="width: {percentage}%;"></div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def animated_score(value: int | float, key: str = "score", label: str = "Score"):
+    """A score chip that count-ups on each render whose ``key`` changes.
+
+    The animation re-runs whenever ``key`` changes (e.g. after a correct
+    answer). We do this by including ``key`` in a CSS class so Streamlit
+    sees a different DOM and re-applies the keyframe.
+    """
+    safe_key = "".join(ch if ch.isalnum() else "_" for ch in str(key))
+    formatted = f"{int(value):,}" if isinstance(value, (int,)) or float(value).is_integer() else f"{value:,.1f}"
+    st.markdown(
+        f"""
+        <span class="score-chip" data-key="{safe_key}">
+            <span class="score-chip-label">{label}</span>
+            <span class="score-chip-value" data-mm-anim="{safe_key}">{formatted}</span>
+        </span>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def milestone_hint(text: str, progress: int, target: int, icon: str = "🎯"):
+    """Render a small "X more for Y" chip used to surface near-miss badges."""
+    if target <= 0:
+        return
+    pct = max(0.0, min(progress / target * 100.0, 100.0))
+    st.markdown(
+        f"""
+        <div class="milestone-hint">
+            <span class="milestone-hint-icon">{icon}</span>
+            <span class="milestone-hint-text">{text}</span>
+            <span class="milestone-hint-progress">
+                <span class="milestone-hint-fill" style="width: {pct:.0f}%;"></span>
+            </span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def empty_state(
+    title: str,
+    body: str,
+    cta_label: Optional[str] = None,
+    on_click: Optional[Callable[[], None]] = None,
+    *,
+    cta_key: Optional[str] = None,
+):
+    """A friendly empty-state card for fresh-install screens.
+
+    If ``cta_label`` and ``on_click`` are both supplied, a primary button
+    is rendered below the card. The CTA is a regular Streamlit button so
+    Streamlit can wire up the callback without HTML form posts.
+    """
+    st.markdown(
+        f"""
+        <div class="empty-state">
+            <div class="empty-state-title">{title}</div>
+            <div class="empty-state-body">{body}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if cta_label and on_click:
+        if st.button(
+            cta_label,
+            key=cta_key or f"empty_state_cta_{title}",
+            use_container_width=True,
+            type="primary",
+        ):
+            on_click()
 
 
 def progress_bar_with_label(current: int, total: int, label: str = "Progress"):
