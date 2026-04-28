@@ -485,20 +485,40 @@ class TestCheckEarnedBadges:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(
-    reason=(
-        "Depends on Batch C — 'In Form' / 'Hot Streak' badges are not yet "
-        "defined in `BadgeManager._check_badge_condition` or "
-        "`DatabaseManager._insert_default_badges`. Unskip when Batch C "
-        "ships."
-    )
-)
 class TestBatchCBadges:
+    """Recent-form badges added by Batch C."""
 
     def test_in_form_awarded(self, db, badge_mgr):
-        # Placeholder — when Batch C lands, plant whatever facts the
-        # spec requires (likely a multi-session high-accuracy window).
-        raise NotImplementedError
+        # 50 non-skipped attempts at 100% — comfortably clears the 90% bar.
+        summary = _make_summary(total_questions=50, correct=50)
+        _save(db, summary)
+        # Re-instantiate so it sees the persisted data and the Batch C-
+        # registered badge rows.
+        badge_mgr = BadgeManager(db)
+        earned = {b.badge_name for b in badge_mgr.check_earned_badges(summary)}
+        assert "In Form" in earned
+
+    def test_in_form_not_awarded_below_threshold(self, db, badge_mgr):
+        # 50 attempts at 80% — under the 90% bar, no In Form.
+        summary = _make_summary(total_questions=50, correct=40)
+        _save(db, summary)
+        badge_mgr = BadgeManager(db)
+        earned = {b.badge_name for b in badge_mgr.check_earned_badges(summary)}
+        assert "In Form" not in earned
 
     def test_hot_streak_awarded(self, db, badge_mgr):
-        raise NotImplementedError
+        # 12 correct in a row in one session, no skips: scans summary.results
+        # and finds the run.
+        summary = _make_summary(total_questions=12, correct=12)
+        _save(db, summary)
+        badge_mgr = BadgeManager(db)
+        earned = {b.badge_name for b in badge_mgr.check_earned_badges(summary)}
+        assert "Hot Streak" in earned
+
+    def test_hot_streak_not_awarded_when_run_too_short(self, db, badge_mgr):
+        # 9 correct in a row is one short.
+        summary = _make_summary(total_questions=9, correct=9)
+        _save(db, summary)
+        badge_mgr = BadgeManager(db)
+        earned = {b.badge_name for b in badge_mgr.check_earned_badges(summary)}
+        assert "Hot Streak" not in earned

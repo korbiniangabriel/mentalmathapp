@@ -53,13 +53,19 @@ class BadgeManager:
     
     def check_earned_badges(self, summary: SessionSummary) -> List[Badge]:
         """Check which badges were earned in this session.
-        
+
         Args:
             summary: Session summary
-            
+
         Returns:
             List of newly earned badges
         """
+        # A 0-question summary (e.g. a quit-on-empty session) has no work
+        # for any condition to evaluate against; several conditions divide
+        # by total_questions.
+        if summary.total_questions == 0:
+            return []
+
         newly_earned = []
         all_badges = self.get_all_badges()
         stats = self.db.get_performance_stats()

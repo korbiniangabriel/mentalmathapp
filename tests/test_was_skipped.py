@@ -176,14 +176,6 @@ class TestRawFetchIncludesSkips:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skip(
-    reason=(
-        "Depends on Batch C — `DatabaseManager.get_performance_stats` and "
-        "`get_weak_areas` need a `WHERE was_skipped = 0` filter to "
-        "exclude skipped rows from accuracy. Once Batch C lands, unskip "
-        "these tests."
-    )
-)
 class TestAnalyticsExcludesSkipped:
 
     def test_performance_stats_excludes_skipped(self, db):
