@@ -37,18 +37,25 @@ class PercentageGenerator(QuestionGenerator):
             percent = random.choice([15, 17, 20, 23, 30, 35])
             number = random.randint(50, 500)
         else:  # hard
-            percent = round(random.uniform(3.5, 25.5), 1)
+            # Curated mental-friendly non-anchor integer percents so users
+            # don't have to compute things like "18.7% of 537".
+            percent = random.choice([12, 15, 17, 22, 33, 35, 60, 65, 80])
             number = random.randint(100, 1000)
-        
+
         answer = round(number * percent / 100, 2)
-        
+
+        acceptable = [str(answer)]
+        if answer == int(answer):
+            acceptable.append(str(int(answer)))
+        acceptable = list(dict.fromkeys(acceptable))
+
         return Question(
             question_type=self.question_type,
             category=self.category,
             difficulty=difficulty,
             question_text=f"What is {percent}% of {number}?",
             correct_answer=str(answer),
-            acceptable_answers=[str(answer), str(int(answer)) if answer == int(answer) else str(answer)],
+            acceptable_answers=acceptable,
             metadata={"percent": percent, "number": number, "type": "find_percentage"}
         )
     
@@ -73,13 +80,20 @@ class PercentageGenerator(QuestionGenerator):
         else:
             answer = change_percent
         
+        correct_answer = str(round(answer, 2))
+        acceptable = list(dict.fromkeys([
+            correct_answer,
+            str(round(answer, 1)),
+            str(int(answer)),
+        ]))
+
         return Question(
             question_type=self.question_type,
             category=self.category,
             difficulty=difficulty,
             question_text=f"What is the percentage change from {old} to {int(new)}?",
-            correct_answer=str(round(answer, 2)),
-            acceptable_answers=[str(round(answer, 2)), str(round(answer, 1)), str(int(answer))],
+            correct_answer=correct_answer,
+            acceptable_answers=acceptable,
             metadata={"old_value": old, "new_value": new, "type": "percentage_change"}
         )
     
@@ -98,12 +112,15 @@ class PercentageGenerator(QuestionGenerator):
         part = round(x * percent / 100, 2)
         answer = x
         
+        correct_answer = str(answer)
+        acceptable = list(dict.fromkeys([correct_answer, str(round(answer, 1))]))
+
         return Question(
             question_type=self.question_type,
             category=self.category,
             difficulty=difficulty,
             question_text=f"If {part} is {percent}% of a number, what is the number?",
-            correct_answer=str(answer),
-            acceptable_answers=[str(answer), str(round(answer, 1))],
+            correct_answer=correct_answer,
+            acceptable_answers=acceptable,
             metadata={"part": part, "percent": percent, "type": "reverse_percentage"}
         )
