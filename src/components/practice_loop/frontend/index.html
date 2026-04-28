@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Practice Loop</title>
+<style>
+  /* Design tokens copied from src/ui/styles.py so the component matches the
+     parent palette. Keep these in sync if the parent palette changes. */
+  :root {
+    --bg-0: #f2f6f8;
+    --bg-1: #dce9ef;
+    --paper: #ffffff;
+    --ink-900: #11212c;
+    --ink-700: #384a56;
+    --ink-500: #6c7a86;
+    --line: #d2dde4;
+    --brand: #0f766e;
+    --brand-strong: #115e59;
+    --accent: #f59e0b;
+    --accent-soft: #fef3c7;
+    --success: #15803d;
+    --danger: #b42318;
+    --warning: #b45309;
+    --shadow: 0 14px 30px rgba(16, 34, 45, 0.08);
+    --radius-lg: 18px;
+    --radius-md: 12px;
+    --radius-sm: 10px;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    font-family: "Manrope", "Segoe UI", system-ui, sans-serif;
+    color: var(--ink-900);
+    background: transparent;
+  }
+
+  .root {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    padding: 0.4rem 0.2rem 1.2rem;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .topbar {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+
+  .stat {
+    border: 1px solid rgba(17, 33, 44, 0.12);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.95);
+    padding: 0.45rem 0.6rem;
+    text-align: center;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--ink-900);
+    line-height: 1.15;
+  }
+  .stat .stat-label {
+    display: block;
+    font-family: "Manrope", sans-serif;
+    color: var(--ink-500);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.62rem;
+    font-weight: 700;
+    margin-bottom: 0.1rem;
+  }
+  .stat.timer-warning {
+    color: var(--danger);
+    border-color: rgba(180, 35, 24, 0.34);
+    background: rgba(254, 237, 236, 0.96);
+  }
+
+  .quit-btn {
+    border: 1px solid rgba(180, 35, 24, 0.32);
+    background: rgba(255, 255, 255, 0.95);
+    color: var(--danger);
+    border-radius: var(--radius-sm);
+    padding: 0 0.85rem;
+    font-weight: 800;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 140ms ease, transform 140ms ease;
+  }
+  .quit-btn:hover { background: rgba(254, 237, 236, 0.96); }
+  .quit-btn.confirming {
+    background: var(--danger);
+    color: #fff;
+    border-color: var(--danger);
+  }
+
+  .session-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.78rem;
+    color: var(--ink-500);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .score-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: rgba(15, 118, 110, 0.1);
+    color: var(--brand-strong);
+    border: 1px solid rgba(15, 118, 110, 0.22);
+    border-radius: 999px;
+    padding: 0.22rem 0.7rem;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-weight: 800;
+    font-size: 0.95rem;
+    transition: transform 180ms ease;
+  }
+  .score-chip.bump { transform: scale(1.12); }
+
+  .progress-wrap { display: flex; flex-direction: column; gap: 0.18rem; }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.74rem;
+    color: var(--ink-700);
+    font-weight: 700;
+  }
+  .progress-track {
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(17, 33, 44, 0.12);
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--brand), #14b8a6);
+    transition: width 240ms ease;
+  }
+
+  .combo-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+    min-height: 20px;
+  }
+  .combo-text {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--ink-900);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .combo-stage {
+    color: var(--accent);
+    font-weight: 800;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .combo-meter {
+    height: 8px;
+    background: rgba(17, 33, 44, 0.12);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .combo-meter-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #f59e0b, #f97316);
+    transition: width 260ms ease;
+    width: 0%;
+  }
+  .combo-stage-x10 .combo-meter-fill {
+    background: linear-gradient(90deg, #f59e0b, #ef4444);
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.45);
+  }
+  .combo-stage-x15 .combo-meter-fill {
+    background: linear-gradient(90deg, #ef4444, #a855f7);
+    box-shadow: 0 0 16px rgba(168, 85, 247, 0.55);
+  }
+
+  .question-card {
+    border: 1px solid rgba(17, 33, 44, 0.1);
+    background: linear-gradient(180deg, #ffffff, #f7fbfc);
+    border-radius: var(--radius-lg);
+    padding: 1.4rem 1rem;
+    box-shadow: var(--shadow);
+    text-align: center;
+    transition: transform 180ms ease, opacity 180ms ease;
+  }
+  .question-card.flash-correct {
+    border-color: rgba(21, 128, 61, 0.45);
+    background: linear-gradient(180deg, #defbe8, #cbf2da);
+  }
+  .question-card.flash-wrong {
+    border-color: rgba(180, 35, 24, 0.45);
+    background: linear-gradient(180deg, #fdeceb, #fbe1e0);
+  }
+  .question-card.advancing {
+    transform: translateY(-6px);
+    opacity: 0.55;
+  }
+  .question-text {
+    font-size: clamp(1.6rem, 5vw, 2.2rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--ink-900);
+    line-height: 1.15;
+  }
+  .question-meta {
+    margin-top: 0.4rem;
+    font-size: 0.74rem;
+    color: var(--ink-500);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+
+  .answer-row { display: flex; flex-direction: column; gap: 0.55rem; }
+
+  .answer-input {
+    width: 100%;
+    border: 1px solid rgba(17, 33, 44, 0.16);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.97);
+    padding: 0.85rem 0.95rem;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--ink-900);
+    outline: none;
+    transition: border-color 140ms ease, box-shadow 140ms ease;
+  }
+  .answer-input:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.18);
+  }
+  .answer-input.flash-wrong {
+    border-color: rgba(180, 35, 24, 0.55);
+    box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.18);
+  }
+
+  .button-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+  .btn {
+    border-radius: var(--radius-md);
+    padding: 0.7rem 0.6rem;
+    font-weight: 800;
+    font-size: 0.95rem;
+    cursor: pointer;
+    border: 1px solid rgba(17, 33, 44, 0.16);
+    background: rgba(255, 255, 255, 0.97);
+    color: var(--ink-900);
+    transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(17, 33, 44, 0.12); }
+  .btn:active { transform: translateY(0); }
+  .btn.primary {
+    color: #fff;
+    background: linear-gradient(140deg, var(--brand), var(--brand-strong));
+    border-color: rgba(15, 118, 110, 0.55);
+  }
+  .btn.primary:hover { box-shadow: 0 9px 20px rgba(15, 118, 110, 0.25); }
+  .btn.skip {
+    color: var(--warning);
+    border-color: rgba(180, 83, 9, 0.32);
+    background: rgba(255, 247, 220, 0.85);
+  }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink-900);
+    color: #fff;
+    padding: 0.55rem 0.95rem;
+    border-radius: 999px;
+    font-weight: 800;
+    font-size: 0.88rem;
+    box-shadow: 0 8px 22px rgba(17, 33, 44, 0.35);
+    opacity: 0;
+    transition: opacity 200ms ease, transform 220ms ease;
+    pointer-events: none;
+    z-index: 10;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.toast-correct { background: var(--success); }
+  .toast.toast-wrong { background: var(--danger); }
+  .toast.toast-skip { background: var(--warning); }
+
+  .end-card {
+    border-radius: var(--radius-lg);
+    padding: 1.4rem 1rem;
+    text-align: center;
+    background: linear-gradient(130deg, rgba(15, 118, 110, 0.12), rgba(245, 158, 11, 0.12));
+    border: 1px solid rgba(17, 33, 44, 0.08);
+    color: var(--ink-900);
+    font-weight: 800;
+  }
+
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+  }
+  .shake { animation: shake 220ms ease-in-out; }
+
+  @keyframes popIn {
+    0% { transform: scale(0.94); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .pop-in { animation: popIn 240ms ease-out; }
+</style>
+</head>
+<body>
+<div class="root" id="root">
+  <div class="topbar">
+    <div class="stat" id="timer-stat">
+      <span class="stat-label" id="timer-label">Time</span>
+      <span id="timer-value">--:--</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Question</span>
+      <span id="qcount-value">0</span>
+    </div>
+    <button class="quit-btn" id="quit-btn" type="button">Quit</button>
+  </div>
+
+  <div class="session-meta">
+    <span id="session-meta-text"></span>
+    <span class="score-chip" id="score-chip">
+      <span aria-hidden="true">🏆</span>
+      <span id="score-value">0</span>
+    </span>
+  </div>
+
+  <div class="progress-wrap" id="progress-wrap" style="display:none">
+    <div class="progress-label">
+      <span>Progress</span>
+      <span id="progress-text">0/0</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  </div>
+
+  <div class="combo-wrap" id="combo-wrap" style="display:none">
+    <div class="combo-text">
+      <span>Combo <span id="combo-count">x0</span></span>
+      <span class="combo-stage" id="combo-stage"></span>
+    </div>
+    <div class="combo-meter"><div class="combo-meter-fill" id="combo-fill"></div></div>
+  </div>
+
+  <div class="question-card pop-in" id="question-card">
+    <div class="question-text" id="question-text">Loading…</div>
+    <div class="question-meta" id="question-meta"></div>
+  </div>
+
+  <div class="answer-row">
+    <input
+      class="answer-input"
+      id="answer-input"
+      type="text"
+      inputmode="decimal"
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="none"
+      spellcheck="false"
+      enterkeyhint="done"
+      placeholder="Type your answer…"
+      aria-label="Answer"
+    />
+    <div class="button-row">
+      <button class="btn primary" id="enter-btn" type="button">Enter</button>
+      <button class="btn skip" id="skip-btn" type="button">Skip (S)</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+"use strict";
+
+// ---------------------------------------------------------------------------
+// Streamlit bidirectional iframe protocol (no-build path).
+// We avoid importing streamlit-component-lib so this works without a bundler.
+// ---------------------------------------------------------------------------
+const Streamlit = (function () {
+  let _frameHeight = 0;
+  function setComponentReady() {
+    window.parent.postMessage(
+      { type: "streamlit:componentReady", apiVersion: 1 },
+      "*"
+    );
+  }
+  function setFrameHeight(h) {
+    if (h === _frameHeight) return;
+    _frameHeight = h;
+    window.parent.postMessage(
+      { type: "streamlit:setFrameHeight", height: h },
+      "*"
+    );
+  }
+  function setComponentValue(value) {
+    window.parent.postMessage(
+      { type: "streamlit:setComponentValue", value: value, dataType: "json" },
+      "*"
+    );
+  }
+  return { setComponentReady, setFrameHeight, setComponentValue };
+})();
+
+// ---------------------------------------------------------------------------
+// Validator (mirror of src/game_logic/validator.py — keep in sync).
+// ---------------------------------------------------------------------------
+function _normalize(raw) {
+  if (raw === null || raw === undefined) return "";
+  let s = String(raw).trim();
+  s = s
+    .replace(/，/g, ",")
+    .replace(/،/g, ",")
+    .replace(/٬/g, ",")
+    .replace(/٫/g, ".");
+  return s;
+}
+function _parseFraction(text) {
+  const s = _normalize(text);
+  if (!s.includes("/")) return null;
+  const parts = s.split("/");
+  if (parts.length !== 2) return null;
+  const n = Number(parts[0].trim());
+  const d = Number(parts[1].trim());
+  if (!Number.isFinite(n) || !Number.isFinite(d) || d === 0) return null;
+  return n / d;
+}
+function _extractPct(text) {
+  const s = _normalize(text);
+  if (!s) return null;
+  if (s.endsWith("%")) {
+    const n = Number(s.slice(0, -1));
+    return Number.isFinite(n) ? n : null;
+  }
+  const n = Number(s.replace(/,/g, ""));
+  if (!Number.isFinite(n)) return null;
+  if (n >= 0 && n <= 1) return n * 100;
+  if (n >= -100 && n <= 100) return n;
+  return null;
+}
+function _parseNumber(text) {
+  let s = _normalize(text);
+  if (!s) return null;
+  if ((s.split(",").length - 1) === 1 && !s.includes(".")) {
+    const [left, right] = s.split(",", 2);
+    if (/^[+-]?\d+$/.test(left.trim()) && /^\d+$/.test(right.trim()) && right.trim().length <= 2) {
+      s = left.trim() + "." + right.trim();
+    }
+  }
+  s = s.replace(/,/g, "");
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+function isCorrect(userRaw, expectedList) {
+  const user = _normalize(userRaw);
+  if (!user) return false;
+  const exps = Array.isArray(expectedList) ? expectedList : [];
+
+  // 1. Case-insensitive exact match.
+  for (const e of exps) {
+    const exp = _normalize(e);
+    if (exp && user.toLowerCase() === exp.toLowerCase()) return true;
+  }
+  // 2. Percentage tolerance (0.1).
+  for (const e of exps) {
+    const u = _extractPct(user);
+    const x = _extractPct(e);
+    if (u !== null && x !== null && Math.abs(u - x) < 0.1) return true;
+  }
+  // 3. Fraction equivalence (only when both contain '/').
+  for (const e of exps) {
+    if (!user.includes("/") || !String(e || "").includes("/")) continue;
+    const u = _parseFraction(user);
+    const x = _parseFraction(e);
+    if (u !== null && x !== null && Math.abs(u - x) < 0.001) return true;
+  }
+  // 4. Numeric tolerance: 1% relative for >10, 0.1 absolute for <=10.
+  for (const e of exps) {
+    const u = _parseNumber(user);
+    const x = _parseNumber(e);
+    if (u === null || x === null) continue;
+    if (Math.abs(x) > 10) {
+      if (Math.abs(u - x) / Math.abs(x) < 0.01) return true;
+    } else {
+      if (Math.abs(u - x) < 0.1) return true;
+    }
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Game state
+// ---------------------------------------------------------------------------
+const state = {
+  args: null,                  // Last render args from Streamlit.
+  initialized: false,
+  questions: [],
+  mode: "marathon",
+  durationSeconds: null,
+  questionCount: null,
+  currentIdx: 0,
+  results: [],                 // Each: {question_id, user_answer, is_correct, was_skipped, time_taken}
+  score: 0,
+  combo: 0,
+  startedAt: 0,                // ms (whole session)
+  questionStartedAt: 0,        // ms
+  finished: false,
+  quitConfirmAt: 0,            // ms; if > now-3s, second tap quits
+  timerHandle: null,
+};
+
+// Element handles
+const els = {
+  root: document.getElementById("root"),
+  timerStat: document.getElementById("timer-stat"),
+  timerLabel: document.getElementById("timer-label"),
+  timerValue: document.getElementById("timer-value"),
+  qcountValue: document.getElementById("qcount-value"),
+  quitBtn: document.getElementById("quit-btn"),
+  sessionMeta: document.getElementById("session-meta-text"),
+  scoreChip: document.getElementById("score-chip"),
+  scoreValue: document.getElementById("score-value"),
+  progressWrap: document.getElementById("progress-wrap"),
+  progressText: document.getElementById("progress-text"),
+  progressFill: document.getElementById("progress-fill"),
+  comboWrap: document.getElementById("combo-wrap"),
+  comboCount: document.getElementById("combo-count"),
+  comboStage: document.getElementById("combo-stage"),
+  comboFill: document.getElementById("combo-fill"),
+  questionCard: document.getElementById("question-card"),
+  questionText: document.getElementById("question-text"),
+  questionMeta: document.getElementById("question-meta"),
+  answerInput: document.getElementById("answer-input"),
+  enterBtn: document.getElementById("enter-btn"),
+  skipBtn: document.getElementById("skip-btn"),
+  toast: document.getElementById("toast"),
+};
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+function fmtTime(s) {
+  if (!Number.isFinite(s)) return "--:--";
+  s = Math.max(0, Math.floor(s));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return m + ":" + String(r).padStart(2, "0");
+}
+
+function showToast(text, kind) {
+  els.toast.textContent = text;
+  els.toast.className = "toast show " + (kind ? "toast-" + kind : "");
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => {
+    els.toast.className = "toast";
+  }, 900);
+}
+
+function comboStageLabel(c) {
+  if (c >= 15) return "LEGENDARY x15";
+  if (c >= 10) return "INSANE x10";
+  if (c >= 5) return "ON FIRE x5";
+  if (c >= 3) return "STREAK x3";
+  return "";
+}
+
+function updateCombo() {
+  if (state.combo <= 0) {
+    els.comboWrap.style.display = "none";
+    els.comboFill.style.width = "0%";
+    els.comboWrap.classList.remove("combo-stage-x10", "combo-stage-x15");
+    return;
+  }
+  els.comboWrap.style.display = "";
+  els.comboCount.textContent = "x" + state.combo;
+  els.comboStage.textContent = comboStageLabel(state.combo);
+
+  // Visual stages — width fills toward the next milestone (3, 5, 10, 15, then loop).
+  const stops = [0, 3, 5, 10, 15, 25];
+  let lo = 0, hi = stops[stops.length - 1];
+  for (let i = 1; i < stops.length; i++) {
+    if (state.combo < stops[i]) { lo = stops[i - 1]; hi = stops[i]; break; }
+  }
+  const pct = Math.min(100, Math.max(8, ((state.combo - lo) / (hi - lo)) * 100));
+  els.comboFill.style.width = pct + "%";
+  els.comboWrap.classList.toggle("combo-stage-x10", state.combo >= 10 && state.combo < 15);
+  els.comboWrap.classList.toggle("combo-stage-x15", state.combo >= 15);
+}
+
+function updateScore(delta) {
+  // Lightweight count-up on bump.
+  state.score += delta;
+  els.scoreValue.textContent = state.score.toLocaleString();
+  els.scoreChip.classList.add("bump");
+  setTimeout(() => els.scoreChip.classList.remove("bump"), 220);
+}
+
+function updateProgress() {
+  els.qcountValue.textContent = String(state.results.length);
+  if (state.questionCount) {
+    els.progressWrap.style.display = "";
+    els.progressText.textContent = state.results.length + "/" + state.questionCount;
+    const pct = Math.min(100, (state.results.length / state.questionCount) * 100);
+    els.progressFill.style.width = pct + "%";
+  } else {
+    els.progressWrap.style.display = "none";
+  }
+}
+
+function tickTimer() {
+  if (state.finished) return;
+  const now = Date.now();
+  const elapsedSec = (now - state.startedAt) / 1000;
+  if (state.mode === "sprint" && state.durationSeconds) {
+    const remaining = state.durationSeconds - elapsedSec;
+    els.timerLabel.textContent = "Time Left";
+    els.timerValue.textContent = fmtTime(remaining);
+    if (remaining <= 5 && remaining > 0) {
+      els.timerStat.classList.add("timer-warning");
+    } else {
+      els.timerStat.classList.remove("timer-warning");
+    }
+    if (remaining <= 0) {
+      finish("timeout");
+    }
+  } else {
+    els.timerLabel.textContent = "Elapsed";
+    els.timerValue.textContent = fmtTime(elapsedSec);
+  }
+
+  // Auto-clear quit-confirm after 3s.
+  if (state.quitConfirmAt && now - state.quitConfirmAt > 3000) {
+    state.quitConfirmAt = 0;
+    els.quitBtn.classList.remove("confirming");
+    els.quitBtn.textContent = "Quit";
+  }
+}
+
+function renderCurrentQuestion() {
+  const q = state.questions[state.currentIdx];
+  if (!q) {
+    // Out of questions — finish.
+    finish("completed");
+    return;
+  }
+  els.questionText.textContent = q.text;
+  els.questionMeta.textContent = ""; // Reserved for future hints.
+
+  // Reset input + flash classes.
+  els.answerInput.value = "";
+  els.answerInput.classList.remove("flash-wrong", "shake");
+  els.questionCard.classList.remove("flash-correct", "flash-wrong", "advancing");
+  els.questionCard.classList.remove("pop-in");
+  // Force reflow so animation can replay.
+  // eslint-disable-next-line no-unused-expressions
+  els.questionCard.offsetWidth;
+  els.questionCard.classList.add("pop-in");
+
+  // Adjust input mode for fraction questions ('/').
+  if (q.needs_fraction_keyboard) {
+    els.answerInput.setAttribute("inputmode", "text");
+  } else {
+    els.answerInput.setAttribute("inputmode", "decimal");
+  }
+
+  // Refocus immediately to keep keyboard open on mobile (best-effort: iOS may
+  // require a user gesture, but as long as we're inside one, this works).
+  try { els.answerInput.focus({ preventScroll: true }); } catch (_) { try { els.answerInput.focus(); } catch (__) {} }
+
+  state.questionStartedAt = Date.now();
+}
+
+// Convert client-side input into a form that the *Python* validator will
+// also accept. The server re-runs validation in submit_answer, so if we
+// don't pre-normalize here the client and server can disagree (e.g. on
+// "12,5" used as a decimal).
+function canonicalize(raw) {
+  let s = _normalize(raw);
+  // Single-comma decimal heuristic (e.g. "12,5" -> "12.5"). Avoid touching
+  // thousand separators like "1,000".
+  if ((s.split(",").length - 1) === 1 && !s.includes(".")) {
+    const [left, right] = s.split(",", 2);
+    if (/^[+-]?\d+$/.test(left.trim()) && /^\d+$/.test(right.trim()) && right.trim().length <= 2) {
+      s = left.trim() + "." + right.trim();
+    }
+  }
+  return s;
+}
+
+function recordResult(userAnswer, wasSkipped) {
+  const q = state.questions[state.currentIdx];
+  if (!q) return null;
+  const canonical = wasSkipped ? "" : canonicalize(userAnswer);
+  const correct = wasSkipped ? false : isCorrect(canonical, q.acceptable_answers);
+  const result = {
+    question_id: q.id,
+    user_answer: canonical,
+    is_correct: correct,
+    was_skipped: !!wasSkipped,
+    time_taken: Math.max(0, (Date.now() - state.questionStartedAt) / 1000),
+  };
+  state.results.push(result);
+
+  if (correct) {
+    state.combo += 1;
+    // Simple client-side score so the UI feels alive. The real score is
+    // recomputed server-side via SessionManager.submit_answer when the
+    // session ends, so this is purely cosmetic.
+    const base = 100;
+    const comboBonus = Math.max(0, state.combo - 1) * 25;
+    updateScore(base + comboBonus);
+  } else {
+    state.combo = 0;
+  }
+  updateCombo();
+  updateProgress();
+  return result;
+}
+
+function flashCorrectThenAdvance() {
+  els.questionCard.classList.add("flash-correct");
+  showToast("Correct!", "correct");
+  setTimeout(() => {
+    state.currentIdx += 1;
+    if (shouldFinish()) {
+      finish("completed");
+    } else {
+      renderCurrentQuestion();
+    }
+  }, 180);
+}
+
+function flashWrong() {
+  els.answerInput.classList.add("flash-wrong", "shake");
+  els.questionCard.classList.add("flash-wrong");
+  setTimeout(() => {
+    els.answerInput.classList.remove("flash-wrong", "shake");
+    els.questionCard.classList.remove("flash-wrong");
+  }, 280);
+}
+
+function shouldFinish() {
+  if (state.mode === "sprint") {
+    // Sprint finishes by timer; only finish here if we somehow exhausted the
+    // pre-generated question pool.
+    return state.currentIdx >= state.questions.length;
+  }
+  if (state.questionCount && state.results.length >= state.questionCount) return true;
+  return state.currentIdx >= state.questions.length;
+}
+
+// ---------------------------------------------------------------------------
+// Event handlers
+// ---------------------------------------------------------------------------
+function onInput() {
+  if (state.finished) return;
+  const v = els.answerInput.value;
+  const q = state.questions[state.currentIdx];
+  if (!q) return;
+  // Auto-submit when current input matches.
+  if (v && isCorrect(v, q.acceptable_answers)) {
+    submitAnswer(v, false);
+  }
+}
+
+function submitAnswer(rawAnswer, wasSkipped) {
+  if (state.finished) return;
+  const q = state.questions[state.currentIdx];
+  if (!q) return;
+  const result = recordResult(rawAnswer == null ? "" : String(rawAnswer), wasSkipped);
+  if (!result) return;
+
+  if (wasSkipped) {
+    showToast("Skipped", "skip");
+  }
+
+  if (result.is_correct) {
+    flashCorrectThenAdvance();
+  } else {
+    if (!wasSkipped && rawAnswer && String(rawAnswer).trim() !== "") {
+      // User pressed Enter on a wrong, non-empty answer: shake + advance.
+      flashWrong();
+      showToast("Not quite", "wrong");
+    }
+    // Always advance on wrong/skip after a brief pause so the user sees the flash.
+    const delay = wasSkipped ? 0 : 280;
+    setTimeout(() => {
+      if (state.finished) return;
+      state.currentIdx += 1;
+      if (shouldFinish()) {
+        finish("completed");
+      } else {
+        renderCurrentQuestion();
+      }
+    }, delay);
+  }
+}
+
+function onEnterPress() {
+  if (state.finished) return;
+  const v = els.answerInput.value;
+  // Empty Enter is treated as a no-op (use Skip explicitly).
+  if (!v || !v.trim()) return;
+  submitAnswer(v, false);
+}
+
+function onSkip() {
+  if (state.finished) return;
+  submitAnswer(els.answerInput.value || "", true);
+}
+
+function onQuit() {
+  const now = Date.now();
+  if (state.quitConfirmAt && now - state.quitConfirmAt < 3000) {
+    finish("quit");
+    return;
+  }
+  state.quitConfirmAt = now;
+  els.quitBtn.classList.add("confirming");
+  els.quitBtn.textContent = "Tap again to quit";
+}
+
+function onKeyDown(e) {
+  if (state.finished) return;
+  // 's' as skip ONLY when it doesn't risk eating an in-progress answer
+  // (i.e. when input is empty or the user is not focused on the input).
+  if (e.key === "s" || e.key === "S") {
+    if (document.activeElement !== els.answerInput || !els.answerInput.value) {
+      e.preventDefault();
+      onSkip();
+    }
+  } else if (e.key === "Enter") {
+    if (document.activeElement === els.answerInput) {
+      e.preventDefault();
+      onEnterPress();
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Lifecycle
+// ---------------------------------------------------------------------------
+function finish(reason) {
+  if (state.finished) return;
+  state.finished = true;
+  if (state.timerHandle) {
+    clearInterval(state.timerHandle);
+    state.timerHandle = null;
+  }
+  // Clear advancing visuals.
+  els.questionCard.classList.add("advancing");
+
+  // Replace UI with end card so the user sees something while Python takes over.
+  const root = els.root;
+  const correctCount = state.results.filter(r => r.is_correct).length;
+  const total = state.results.length;
+  const reasonText = reason === "timeout" ? "Time's up!" : (reason === "quit" ? "Session ended." : "Done!");
+  const summary = document.createElement("div");
+  summary.className = "end-card pop-in";
+  summary.innerHTML =
+    "<div style='font-size:1.25rem;margin-bottom:0.4rem'>" + reasonText + "</div>" +
+    "<div style='font-size:0.95rem;font-weight:700;color:var(--ink-700)'>"+
+      correctCount + " correct of " + total + " · saving session…" +
+    "</div>";
+  // Hide game widgets, append summary.
+  els.questionCard.style.display = "none";
+  document.querySelector(".answer-row").style.display = "none";
+  els.comboWrap.style.display = "none";
+  root.appendChild(summary);
+
+  // Send results to Python.
+  Streamlit.setComponentValue({
+    completed: true,
+    reason: reason,
+    results: state.results,
+  });
+  // Resize iframe to fit end card.
+  setTimeout(reportHeight, 50);
+}
+
+function reportHeight() {
+  const h = document.documentElement.scrollHeight;
+  Streamlit.setFrameHeight(h + 8);
+}
+
+function init(args) {
+  if (state.initialized) return; // Only initialize on first render.
+  state.initialized = true;
+  state.args = args;
+  state.questions = Array.isArray(args.questions) ? args.questions.slice() : [];
+  state.mode = args.mode || "marathon";
+  state.durationSeconds = args.duration_seconds || null;
+  state.questionCount = args.question_count || null;
+  state.startedAt = Date.now();
+  state.questionStartedAt = state.startedAt;
+
+  // Header meta
+  const cat = args.category_label || "";
+  const diff = args.difficulty_label || "";
+  els.sessionMeta.textContent = (state.mode.toUpperCase() + " · " + cat + (diff ? " · " + diff : "")).trim();
+
+  // Wire events
+  els.answerInput.addEventListener("input", onInput);
+  els.answerInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      onEnterPress();
+    }
+  });
+  els.enterBtn.addEventListener("click", onEnterPress);
+  els.skipBtn.addEventListener("click", onSkip);
+  els.quitBtn.addEventListener("click", onQuit);
+  document.addEventListener("keydown", onKeyDown);
+
+  // First render
+  renderCurrentQuestion();
+  updateProgress();
+  updateCombo();
+  els.scoreValue.textContent = "0";
+
+  // Timer (1Hz is plenty; we read Date.now so drift doesn't matter).
+  state.timerHandle = setInterval(tickTimer, 250);
+  tickTimer();
+
+  // Report height once layout settles.
+  setTimeout(reportHeight, 30);
+  setTimeout(reportHeight, 200);
+}
+
+// ---------------------------------------------------------------------------
+// Streamlit message bridge
+// ---------------------------------------------------------------------------
+window.addEventListener("message", (event) => {
+  const data = event.data;
+  if (!data || typeof data !== "object") return;
+  if (data.type === "streamlit:render") {
+    const args = (data.args && data.args) || {};
+    init(args);
+    // We don't re-init on subsequent renders. The component owns the loop.
+  }
+});
+
+// Notify Streamlit that we're ready to receive args.
+Streamlit.setComponentReady();
+// Initial frame height before args arrive.
+Streamlit.setFrameHeight(640);
+</script>
+</body>
+</html>
