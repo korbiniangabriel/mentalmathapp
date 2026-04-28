@@ -13,9 +13,73 @@ from src.ui.components import (
     celebration_header,
     coach_note,
     insight_card,
+    milestone_hint,
     stat_card,
     streak_flame,
 )
+
+
+def _near_miss_badges(badge_mgr: BadgeManager, db_manager, *, gap_pct: float = 0.85):
+    """Return a list of (text, progress, target, icon) for almost-earned badges.
+
+    Uses ``BadgeManager.get_progress_to_badges`` if it surfaces enough info,
+    and supplements with locally-computed near-miss checks for badges the
+    manager doesn't currently track (e.g. "No Miss" 50-streak).
+    """
+    hints: list[tuple[str, int, int, str]] = []
+
+    try:
+        progress_map = badge_mgr.get_progress_to_badges() or {}
+    except Exception:
+        progress_map = {}
+
+    for name, info in progress_map.items():
+        target = int(info.get("target", 0) or 0)
+        progress = int(info.get("progress", 0) or 0)
+        if target <= 0 or progress >= target:
+            continue
+        if progress / target < gap_pct:
+            continue
+        badge = info.get("badge")
+        icon = getattr(badge, "icon", "🎯") if badge else "🎯"
+        remaining = target - progress
+        hints.append(
+            (
+                f"{remaining} more for {name}",
+                progress,
+                target,
+                icon,
+            )
+        )
+
+    # Supplement: "No Miss" — 50 consecutive correct.
+    try:
+        conn = db_manager.get_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT is_correct FROM questions_answered
+            ORDER BY timestamp DESC
+            LIMIT 50
+            """
+        )
+        rows = cur.fetchall()
+        conn.close()
+        streak_back = 0
+        for row in rows:
+            if row["is_correct"] == 1:
+                streak_back += 1
+            else:
+                break
+        if 40 <= streak_back < 50:
+            remaining = 50 - streak_back
+            hints.append(
+                (f"{remaining} more correct in a row for No Miss", streak_back, 50, "🎯")
+            )
+    except Exception:
+        pass
+
+    return hints
 
 
 def show_results(db_manager):
@@ -51,20 +115,20 @@ def show_results(db_manager):
 
     if accuracy >= goals.target_accuracy and summary.avg_time_per_question <= goals.target_avg_time:
         coach_note(
-            "High-quality session",
-            "You hit both quality gates: accuracy and speed. Keep this mode in your weekly rotation.",
+            "Solid session",
+            "You hit both your accuracy and speed targets. Nice rhythm — keep this mode in rotation.",
             tone="positive",
         )
     elif accuracy < goals.target_accuracy:
         coach_note(
-            "Primary fix",
-            "Accuracy missed your target. Run a targeted session next to lock fundamentals before speed work.",
-            tone="warning",
+            "Worth another pass",
+            "Accuracy was a bit below your usual mark. A short targeted session can reset the fundamentals.",
+            tone="neutral",
         )
     else:
         coach_note(
-            "Secondary fix",
-            "Accuracy is strong; speed is the limiter. Use short sprint blocks to cut response time.",
+            "Speed up next",
+            "Accuracy looked strong — try a quick sprint next to shave a little off your average time.",
             tone="neutral",
         )
 
@@ -81,6 +145,13 @@ def show_results(db_manager):
             with cols[idx % len(cols)]:
                 badge_display(badge, earned=True)
         st.balloons()
+
+    # Surface near-miss badges (e.g. 48/50 No Miss, 95/100 Century Club).
+    hints = _near_miss_badges(badge_mgr, db_manager)
+    if hints:
+        st.subheader("Almost there")
+        for text, progress, target, icon in hints[:4]:
+            milestone_hint(text, progress=progress, target=target, icon=icon)
 
     st.subheader("Category Breakdown")
     by_type: dict[str, dict[str, float | int]] = {}

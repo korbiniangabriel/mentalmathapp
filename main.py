@@ -10,6 +10,7 @@ from src.ui.pages.mode_selection import show_mode_selection
 from src.ui.pages.practice_session import show_practice_session
 from src.ui.pages.results import show_results
 from src.ui.pages.analytics_dashboard import show_analytics_dashboard
+from src.ui.pages.daily_challenge import show_daily_challenge
 
 
 def initialize_session_state():
@@ -62,10 +63,13 @@ def main():
     
     elif page == 'practice_session':
         show_practice_session(db_manager)
-    
+
+    elif page == 'daily':
+        show_daily_challenge(db_manager)
+
     elif page == 'results':
         show_results(db_manager)
-    
+
     elif page == 'analytics':
         show_analytics_dashboard(db_manager)
     
