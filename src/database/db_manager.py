@@ -243,20 +243,24 @@ class DatabaseManager:
     def get_performance_stats(self, days: Optional[int] = None) -> Dict:
         """Get aggregate performance statistics.
 
+        Skipped questions are excluded from accuracy and avg_time so the
+        numbers reflect real attempts. ``total_questions`` here mirrors the
+        non-skipped attempt count, since accuracy is the headline metric.
+
         Args:
             days: Optional lookback window
         """
         conn = self.get_connection()
         cursor = conn.cursor()
 
-        question_where = ""
+        question_where = "WHERE was_skipped = 0"
         session_where = ""
         question_params: tuple = ()
         session_params: tuple = ()
 
         if days is not None:
             cutoff = datetime.now() - timedelta(days=days)
-            question_where = "WHERE timestamp >= ?"
+            question_where = "WHERE was_skipped = 0 AND timestamp >= ?"
             session_where = "WHERE timestamp >= ?"
             question_params = (cutoff,)
             session_params = (cutoff,)
@@ -430,40 +434,51 @@ class DatabaseManager:
         return max_streak
     
     def get_weak_areas(self, threshold: float = 0.75) -> List[str]:
-        """Identify categories with accuracy below threshold."""
+        """Identify categories with accuracy below threshold.
+
+        Skipped questions are excluded so a user who skips a category is
+        not routed back to it under the guise of "needs training".
+        """
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute("""
-            SELECT 
+            SELECT
                 question_type,
                 COUNT(*) as total,
                 SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) as correct,
                 CAST(SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) as accuracy
             FROM questions_answered
+            WHERE was_skipped = 0
             GROUP BY question_type
             HAVING COUNT(*) >= 10
         """)
-        
+
         weak_areas = []
         for row in cursor.fetchall():
             if row['accuracy'] < threshold:
                 weak_areas.append(row['question_type'])
-        
+
         conn.close()
         return weak_areas
-    
+
     def get_category_performance(self) -> pd.DataFrame:
-        """Get performance breakdown by category."""
+        """Get performance breakdown by category.
+
+        Skipped questions are excluded from accuracy and avg_time. The
+        ``questions_answered`` column is the non-skipped attempt count
+        (the metric users care about for "did I actually answer X").
+        """
         conn = self.get_connection()
         query = """
-            SELECT 
+            SELECT
                 question_type,
                 COUNT(*) as questions_answered,
                 SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) as correct_answers,
                 CAST(SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100 as accuracy,
                 AVG(time_taken_seconds) as avg_time
             FROM questions_answered
+            WHERE was_skipped = 0
             GROUP BY question_type
             ORDER BY questions_answered DESC
         """

@@ -8,13 +8,48 @@ from src.database.db_manager import DatabaseManager
 class BadgeManager:
     """Manages badge definitions and checking."""
     
+    # Recent-form badges added by BadgeManager (kept out of the
+    # default-badges insert in db_manager so the schema-owning code
+    # doesn't need to know about them). INSERT OR IGNORE makes this
+    # idempotent across reinstantiations.
+    RECENT_FORM_BADGES = [
+        (
+            "In Form",
+            "90%+ accuracy over your last 50 answered questions",
+            "performance",
+            "📈",
+        ),
+        (
+            "Hot Streak",
+            "10 correct in a row within a single session",
+            "performance",
+            "🔥",
+        ),
+    ]
+
     def __init__(self, db_manager: DatabaseManager):
         """Initialize badge manager.
-        
+
         Args:
             db_manager: Database manager instance
         """
         self.db = db_manager
+        self._ensure_recent_form_badges()
+
+    def _ensure_recent_form_badges(self):
+        """Idempotently insert the recent-form badges into the badges table."""
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+        for badge_name, description, category, icon in self.RECENT_FORM_BADGES:
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO badges (badge_name, description, category, icon)
+                VALUES (?, ?, ?, ?)
+                """,
+                (badge_name, description, category, icon),
+            )
+        conn.commit()
+        conn.close()
     
     def check_earned_badges(self, summary: SessionSummary) -> List[Badge]:
         """Check which badges were earned in this session.
@@ -118,7 +153,55 @@ class BadgeManager:
         
         elif name == "Mixed Master":
             return self._check_mixed_mode_mastery(50, 0.90)
-        
+
+        # Recent-form badges
+        elif name == "In Form":
+            return self._check_recent_form(window=50, min_accuracy=0.90)
+
+        elif name == "Hot Streak":
+            return self._check_in_session_streak(summary, required=10)
+
+        return False
+
+    def _check_recent_form(self, window: int, min_accuracy: float) -> bool:
+        """True if last ``window`` non-skipped answers have >=min_accuracy."""
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT is_correct
+            FROM questions_answered
+            WHERE was_skipped = 0
+            ORDER BY timestamp DESC
+            LIMIT ?
+            """,
+            (window,),
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        if len(rows) < window:
+            return False
+        correct = sum(1 for r in rows if r["is_correct"] == 1)
+        return (correct / window) >= min_accuracy
+
+    @staticmethod
+    def _check_in_session_streak(summary: SessionSummary, required: int) -> bool:
+        """True if any run of ``required`` consecutive correct answers exists in the session.
+
+        Checked against ``summary.results`` only (current session) - not
+        across sessions. Skips break the streak.
+        """
+        run = 0
+        for result in summary.results:
+            if getattr(result, "was_skipped", False):
+                run = 0
+                continue
+            if result.is_correct:
+                run += 1
+                if run >= required:
+                    return True
+            else:
+                run = 0
         return False
     
     def _check_consecutive_correct(self, required: int) -> bool:
@@ -168,13 +251,18 @@ class BadgeManager:
         
         row = cursor.fetchone()
         conn.close()
-        
+
         if row['total'] < min_questions:
             return False
-        
+        # Defensive: COUNT(*) returns 0 (not NULL) so the min_questions
+        # guard above already covers the empty case, but a 0-total here
+        # would crash. Belt-and-suspenders.
+        if row['total'] == 0:
+            return False
+
         accuracy = row['correct'] / row['total']
         return accuracy >= min_accuracy
-    
+
     def _count_hard_mode_sessions(self) -> int:
         """Count number of hard mode sessions completed."""
         conn = self.db.get_connection()
@@ -207,13 +295,16 @@ class BadgeManager:
         
         row = cursor.fetchone()
         conn.close()
-        
+
         if row['total'] < min_questions:
             return False
-        
+        # Defensive guard - same rationale as _check_category_mastery.
+        if row['total'] == 0:
+            return False
+
         accuracy = row['correct'] / row['total']
         return accuracy >= min_accuracy
-    
+
     def get_all_badges(self) -> List[Badge]:
         """Get all badges with earned status.
         

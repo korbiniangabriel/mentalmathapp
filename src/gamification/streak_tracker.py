@@ -104,9 +104,21 @@ class StreakTracker:
         
         return df
     
+    def practiced_today(self) -> bool:
+        """Direct DB check: is there a daily_streaks row for today?"""
+        conn = self.db.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT 1 FROM daily_streaks WHERE date = ? LIMIT 1",
+            (date.today(),),
+        )
+        row = cursor.fetchone()
+        conn.close()
+        return row is not None
+
     def get_streak_stats(self) -> Dict:
         """Get comprehensive streak statistics.
-        
+
         Returns:
             Dictionary with streak stats
         """
@@ -114,5 +126,5 @@ class StreakTracker:
             'current_streak': self.get_current_streak(),
             'longest_streak': self.get_longest_streak(),
             'at_risk': self.is_streak_at_risk(),
-            'practiced_today': not self.is_streak_at_risk() or self.get_current_streak() == 0
+            'practiced_today': self.practiced_today(),
         }

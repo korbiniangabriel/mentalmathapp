@@ -172,7 +172,11 @@ def create_category_radar_chart(data: pd.DataFrame) -> go.Figure:
 
 
 def create_weekly_consistency_chart(data: pd.DataFrame) -> go.Figure:
-    """Create week-level question consistency chart."""
+    """Create week-level question consistency chart.
+
+    With a single row of data we render a simple bar (no accuracy line
+    overlay - a one-point line is misleading).
+    """
     fig = go.Figure()
     if not data.empty:
         fig.add_trace(
@@ -184,17 +188,20 @@ def create_weekly_consistency_chart(data: pd.DataFrame) -> go.Figure:
                 hovertemplate="Week of %{x|%b %d}<br>%{y} questions<extra></extra>",
             )
         )
-        fig.add_trace(
-            go.Scatter(
-                x=data["week_start"],
-                y=data["accuracy"],
-                mode="lines+markers",
-                name="Accuracy",
-                yaxis="y2",
-                line=dict(color="#f59e0b", width=2),
-                hovertemplate="Week of %{x|%b %d}<br>%{y:.1f}% accuracy<extra></extra>",
+        # Only draw the accuracy line when there are >=2 weeks of data;
+        # a single marker line slope is meaningless.
+        if len(data.index) >= 2:
+            fig.add_trace(
+                go.Scatter(
+                    x=data["week_start"],
+                    y=data["accuracy"],
+                    mode="lines+markers",
+                    name="Accuracy",
+                    yaxis="y2",
+                    line=dict(color="#f59e0b", width=2),
+                    hovertemplate="Week of %{x|%b %d}<br>%{y:.1f}% accuracy<extra></extra>",
+                )
             )
-        )
 
     _apply_base_layout(fig, "Weekly Consistency", 340)
     fig.update_layout(
@@ -205,13 +212,32 @@ def create_weekly_consistency_chart(data: pd.DataFrame) -> go.Figure:
 
 
 def create_heatmap_chart(data: pd.DataFrame) -> go.Figure:
-    """Create heatmap showing performance by time of day."""
+    """Create heatmap showing performance by time of day.
+
+    Falls back to a single-row bar chart when there is too little
+    distinct hour data to render a meaningful density heatmap.
+    """
     if data.empty:
         return _apply_base_layout(go.Figure(), "Performance by Time of Day")
 
     display = pd.DataFrame(data).copy()
     windows = display["hour"].astype(int).map(lambda h: f"{h:02d}:00")
     display = display.assign(window=windows)
+
+    # Density heatmaps render misleadingly with <2 distinct x values
+    # (single column gets stretched) - degrade to a simple bar chart.
+    if display["window"].nunique() < 2:
+        fig = go.Figure(
+            go.Bar(
+                x=display["window"],
+                y=display["accuracy"],
+                marker_color="#0f766e",
+                hovertemplate="%{x}<br>%{y:.1f}% accuracy<extra></extra>",
+            )
+        )
+        _apply_base_layout(fig, "Performance by Time of Day", 320)
+        fig.update_yaxes(title="Accuracy %", range=[0, 103], ticksuffix="%")
+        return fig
 
     fig = px.density_heatmap(
         display,
@@ -226,7 +252,14 @@ def create_heatmap_chart(data: pd.DataFrame) -> go.Figure:
 
 
 def create_progress_gauge(current: float, target: float, title: str = "Progress") -> go.Figure:
-    """Create gauge chart for goal progress."""
+    """Create gauge chart for goal progress.
+
+    Guards against ``target == 0`` (which would produce a gauge with a
+    zero-width band and is most likely a misconfiguration).
+    """
+    # Floor target at 1 so downstream multiplications (0.7 * target,
+    # 1.2 * target, the percent computation) cannot divide-by-zero or
+    # render an empty gauge.
     safe_target = max(target, 1)
     fig = go.Figure(
         go.Indicator(
@@ -256,7 +289,11 @@ def create_progress_gauge(current: float, target: float, title: str = "Progress"
 
 
 def create_streak_calendar(data: pd.DataFrame, weeks: int = 8) -> go.Figure:
-    """Create a compact streak activity calendar."""
+    """Create a compact streak activity calendar.
+
+    Falls back to a single bar when there is too little distinct date
+    data to render a meaningful density heatmap.
+    """
     if data.empty:
         return _apply_base_layout(go.Figure(), "Activity Calendar", 260)
 
@@ -264,6 +301,24 @@ def create_streak_calendar(data: pd.DataFrame, weeks: int = 8) -> go.Figure:
     display["date"] = pd.to_datetime(display["date"])
     cutoff = display["date"].max() - pd.Timedelta(weeks=weeks)
     display = display[display["date"] >= cutoff]
+
+    if display.empty:
+        return _apply_base_layout(go.Figure(), "Activity Calendar", 260)
+
+    # density_heatmap with a single distinct x stretches a full-width
+    # band and reads as "every day" - degrade to a single bar.
+    if display["date"].nunique() < 2:
+        fig = go.Figure(
+            go.Bar(
+                x=display["date"],
+                y=display["sessions_completed"],
+                marker_color="#0f766e",
+                hovertemplate="%{x|%b %d}<br>%{y} sessions<extra></extra>",
+            )
+        )
+        _apply_base_layout(fig, "Activity Calendar", 260)
+        fig.update_yaxes(title="Sessions")
+        return fig
 
     fig = px.density_heatmap(
         display,

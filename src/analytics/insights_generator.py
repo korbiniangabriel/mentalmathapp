@@ -28,9 +28,17 @@ class InsightsGenerator:
             List of insight dictionaries with 'text' and 'type' keys
         """
         insights = []
-        
+
+        # Zero-question sessions occur when end_session is called on an
+        # empty state (Batch B returns zero-summaries instead of raising).
+        if not summary.total_questions:
+            return [{
+                'text': "👋 No questions answered this session. Start a new run when you're ready!",
+                'type': 'neutral'
+            }]
+
         # Accuracy insights
-        accuracy = summary.correct_answers / summary.total_questions * 100
+        accuracy = (summary.correct_answers / summary.total_questions * 100) if summary.total_questions else 0.0
         if accuracy == 100:
             insights.append({
                 'text': f"🎉 Perfect score! {summary.correct_answers}/{summary.total_questions} correct!",
@@ -84,7 +92,7 @@ class InsightsGenerator:
                 })
             
             # Speed comparison
-            if avg_time < hist_avg_time - 0.5:
+            if hist_avg_time > 0 and avg_time < hist_avg_time - 0.5:
                 improvement = ((hist_avg_time - avg_time) / hist_avg_time) * 100
                 insights.append({
                     'text': f"⏱️ {improvement:.0f}% faster than your average!",
