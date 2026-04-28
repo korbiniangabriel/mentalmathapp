@@ -67,34 +67,66 @@ class CompoundGenerator(QuestionGenerator):
             question_text = f"{start} increased by {pct1}%, then decreased by {pct2}%, then increased by {pct3}%"
         
         answer = round(final, 2)
-        
+
+        correct_answer = str(int(answer) if answer == int(answer) else answer)
+        acceptable = list(dict.fromkeys([
+            correct_answer,
+            str(int(answer)),
+            str(round(answer, 1)),
+            str(round(answer, 2)),
+        ]))
+
         return Question(
             question_type=self.question_type,
             category=self.category,
             difficulty=difficulty,
             question_text=question_text,
-            correct_answer=str(int(answer) if answer == int(answer) else answer),
-            acceptable_answers=[str(int(answer)), str(round(answer, 1)), str(round(answer, 2))],
+            correct_answer=correct_answer,
+            acceptable_answers=acceptable,
             metadata={"start_value": start, "type": "percentage_operations"}
         )
     
     def _generate_arithmetic_chain(self, difficulty: str) -> Question:
         """Generate arithmetic operation chains."""
         start = random.randint(10, 100)
-        
+
         if difficulty == "easy":
             add = random.randint(10, 50)
             mult = random.randint(2, 5)
             sub = random.randint(10, 50)
-            
+
             result = (start + add) * mult - sub
             question_text = f"Start with {start}, add {add}, multiply by {mult}, then subtract {sub}"
         elif difficulty == "medium":
-            add = random.randint(20, 80)
-            mult = random.randint(2, 7)
             div = random.choice([2, 3, 4, 5])
+            # Regenerate start/add/mult until (start + add) * mult is divisible by div.
+            # Capped retries; on fall-through, choose div from divisors of the product
+            # so the division is always exact (no truncation).
+            for _ in range(50):
+                add = random.randint(20, 80)
+                mult = random.randint(2, 7)
+                product = (start + add) * mult
+                if product % div == 0:
+                    break
+            else:
+                # Fallback: pick div from divisors of the current product
+                product = (start + add) * mult
+                divisors = [d for d in (2, 3, 4, 5) if product % d == 0]
+                if divisors:
+                    div = random.choice(divisors)
+                else:
+                    # Guaranteed: 1 always divides, but we'd rather adjust add so
+                    # that the product becomes divisible by div.
+                    add = (div - ((start) * mult) % div) % div + add
+                    add = max(20, min(80, add))
+                    # Final guarantee: nudge product to be divisible by div
+                    product = (start + add) * mult
+                    if product % div != 0:
+                        # Last resort: bump add until divisible (small loop)
+                        while ((start + add) * mult) % div != 0:
+                            add += 1
             sub = random.randint(10, 50)
-            
+
             result = ((start + add) * mult) // div - sub
             question_text = f"Start with {start}, add {add}, multiply by {mult}, divide by {div}, then subtract {sub}"
         else:  # hard
@@ -105,7 +137,7 @@ class CompoundGenerator(QuestionGenerator):
                 (random.choice([2, 3, 4]), "divide"),
                 (random.randint(5, 20), "add")
             ]
-            
+
             result = start
             steps = [f"Start with {start}"]
             for value, op in operations:
@@ -119,11 +151,31 @@ class CompoundGenerator(QuestionGenerator):
                     result *= value
                     steps.append(f"multiply by {value}")
                 elif op == "divide":
+                    # Ensure clean division: if the current result isn't
+                    # divisible by `value`, swap `value` for a divisor of
+                    # `result`. If none exist (e.g., result == 0 or prime),
+                    # skip the divide step entirely so we never truncate.
+                    if result == 0:
+                        # Skip the divide; appending nothing keeps the
+                        # question text natural.
+                        continue
+                    abs_result = abs(result)
+                    if abs_result % value != 0:
+                        candidate_divisors = [
+                            d for d in (2, 3, 4) if abs_result % d == 0
+                        ]
+                        if candidate_divisors:
+                            value = random.choice(candidate_divisors)
+                        else:
+                            # No clean divisor available: skip the divide step
+                            # so the question text reads naturally and there's
+                            # never any silent truncation.
+                            continue
                     result //= value
                     steps.append(f"divide by {value}")
-            
+
             question_text = ", then ".join(steps)
-        
+
         return Question(
             question_type=self.question_type,
             category=self.category,
@@ -134,46 +186,58 @@ class CompoundGenerator(QuestionGenerator):
         )
     
     def _generate_profit_calculation(self, difficulty: str) -> Question:
-        """Generate profit/loss calculation questions."""
+        """Generate profit/loss calculation questions.
+
+        Uses neutral "net result" framing so a negative answer reads naturally
+        regardless of whether the trade ended in profit or loss.
+        """
         buy_price = random.randint(50, 500)
-        
+
         if difficulty == "easy":
+            # Easy mode is always a profit (sell_price > buy_price by design).
             sell_price = buy_price + random.randint(10, 100)
             commission_pct = random.choice([1, 2, 5])
-            
+
             gross_profit = sell_price - buy_price
             commission = sell_price * commission_pct / 100
             net_profit = gross_profit - commission
-            
+
             question_text = f"Buy at ${buy_price}, sell at ${sell_price}, commission is {commission_pct}%. What is your net profit?"
         elif difficulty == "medium":
             sell_price = random.randint(50, 600)
             commission_pct = random.uniform(1.5, 3.5)
-            
+
             gross_profit = sell_price - buy_price
             commission = sell_price * commission_pct / 100
             net_profit = gross_profit - commission
-            
-            question_text = f"Buy at ${buy_price}, sell at ${sell_price}, commission is {commission_pct:.1f}%. What is your net profit?"
+
+            question_text = f"Buy at ${buy_price}, sell at ${sell_price}, commission is {commission_pct:.1f}%. What is your net result (profit or loss)?"
         else:  # hard
             sell_price = random.randint(50, 600)
             buy_commission_pct = random.uniform(1, 2)
             sell_commission_pct = random.uniform(1.5, 3)
-            
+
             buy_commission = buy_price * buy_commission_pct / 100
             sell_commission = sell_price * sell_commission_pct / 100
             net_profit = sell_price - buy_price - buy_commission - sell_commission
-            
-            question_text = f"Buy at ${buy_price} ({buy_commission_pct:.1f}% commission), sell at ${sell_price} ({sell_commission_pct:.1f}% commission). Net profit?"
-        
+
+            question_text = f"Buy at ${buy_price} ({buy_commission_pct:.1f}% commission), sell at ${sell_price} ({sell_commission_pct:.1f}% commission). What is your net result (profit or loss)?"
+
         answer = round(net_profit, 2)
-        
+
+        correct_answer = str(round(answer, 2))
+        acceptable = list(dict.fromkeys([
+            correct_answer,
+            str(round(answer, 1)),
+            str(int(answer)),
+        ]))
+
         return Question(
             question_type=self.question_type,
             category=self.category,
             difficulty=difficulty,
             question_text=question_text,
-            correct_answer=str(round(answer, 2)),
-            acceptable_answers=[str(round(answer, 2)), str(round(answer, 1)), str(int(answer))],
+            correct_answer=correct_answer,
+            acceptable_answers=acceptable,
             metadata={"buy_price": buy_price, "type": "profit_calculation"}
         )

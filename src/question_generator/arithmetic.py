@@ -133,21 +133,26 @@ class DivisionGenerator(QuestionGenerator):
             quotient = random.randint(10, 50)
             dividend = divisor * quotient
         else:  # hard
-            # Hard: Include decimals or remainders
-            divisor = random.randint(10, 99)
-            dividend = random.randint(100, 999)
-            quotient = round(dividend / divisor, 2)
-        
-        if difficulty == "hard":
-            answer = quotient
-        else:
-            answer = dividend // divisor
-        
+            # Hard: deterministic whole-number quotient using mental-math-friendly
+            # divisors. Avoids the decimal-rounding ambiguity where the user types
+            # an integer answer and the validator's 1% tolerance gives inconsistent
+            # results.
+            divisor = random.choice([4, 5, 8, 16, 20, 25])
+            quotient = random.randint(20, 80)
+            dividend = divisor * quotient
+
+        answer = dividend // divisor
+
+        # Always-whole answers for every difficulty -> the int form is canonical.
+        # Including both string forms helps users who type "143" vs "143.0".
+        acceptable = list(dict.fromkeys([str(answer), str(int(answer))]))
+
         return Question(
             question_type=self.question_type,
             category=self.category,
             difficulty=difficulty,
             question_text=f"{dividend:,} ÷ {divisor}",
             correct_answer=str(answer),
+            acceptable_answers=acceptable,
             metadata={"dividend": dividend, "divisor": divisor, "operation": "division"}
         )

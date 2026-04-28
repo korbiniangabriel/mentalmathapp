@@ -42,17 +42,23 @@ class FractionsGenerator(QuestionGenerator):
             numerator = random.randint(1, 12)
             denominator = random.choice([13, 17, 19, 23])
             fractions = [(numerator, denominator)]
-        
+
         num, denom = random.choice(fractions)
-        answer = round(num / denom, 4)
-        
+        # Question text says "round to 2-3 decimal places". Accept the
+        # unrounded long form too so users typing the calculator output
+        # (e.g. 0.4286) aren't rejected when correct_answer == 0.43.
+        exact = num / denom
+        answer = round(exact, 4)
+
         # Generate acceptable answers with different precision levels
-        acceptable = [
-            str(round(answer, 2)),
-            str(round(answer, 3)),
-            str(round(answer, 4)),
-        ]
-        
+        acceptable = list(dict.fromkeys([
+            str(round(exact, 2)),
+            str(round(exact, 3)),
+            str(round(exact, 4)),
+            # Unrounded long form (truncated to a reasonable display width).
+            f"{exact:.6f}".rstrip("0").rstrip("."),
+        ]))
+
         return Question(
             question_type=self.question_type,
             category=self.category,
@@ -71,16 +77,47 @@ class FractionsGenerator(QuestionGenerator):
             decimals = [0.125, 0.375, 0.625, 0.875, 0.167, 0.833]
         else:  # hard
             decimals = [0.333, 0.667, 0.143, 0.429, 0.571]
-        
+
         decimal = random.choice(decimals)
         frac = Fraction(decimal).limit_denominator(100)
-        
+        correct_answer = f"{frac.numerator}/{frac.denominator}"
+
+        # Build acceptable answers covering:
+        # 1. The reduced fraction (canonical correct_answer).
+        # 2. The literal decimal interpreted as a fraction (e.g. 0.333 -> "333/1000")
+        #    so users who type the literal form aren't rejected by the validator's
+        #    0.001 fraction tolerance.
+        # 3. The decimal itself as a string -- the validator's numeric/percentage
+        #    paths can match this for users who skip fraction format entirely.
+        acceptable = [correct_answer]
+
+        # Literal decimal -> fraction (e.g., 0.333 -> 333/1000)
+        decimal_str = f"{decimal:.6f}".rstrip("0").rstrip(".")
+        if "." in decimal_str:
+            decimals_part = decimal_str.split(".")[1]
+            denom_pow10 = 10 ** len(decimals_part)
+            num_literal = int(round(decimal * denom_pow10))
+            literal_frac = f"{num_literal}/{denom_pow10}"
+            if literal_frac != correct_answer:
+                acceptable.append(literal_frac)
+            # Also the reduced literal (e.g. 0.5 -> 5/10 -> 1/2 already covered).
+            literal_reduced = Fraction(num_literal, denom_pow10)
+            literal_reduced_str = f"{literal_reduced.numerator}/{literal_reduced.denominator}"
+            if literal_reduced_str not in acceptable:
+                acceptable.append(literal_reduced_str)
+
+        # Plain decimal (str) -- accepted via validator's numeric/percentage path.
+        acceptable.append(str(decimal))
+
+        acceptable = list(dict.fromkeys(acceptable))
+
         return Question(
             question_type=self.question_type,
             category=self.category,
             difficulty=difficulty,
             question_text=f"Convert {decimal} to a simplified fraction (format: numerator/denominator, e.g., 1/2)",
-            correct_answer=f"{frac.numerator}/{frac.denominator}",
+            correct_answer=correct_answer,
+            acceptable_answers=acceptable,
             metadata={"decimal": decimal, "type": "decimal_to_fraction"}
         )
     
