@@ -41,7 +41,11 @@ class PerformanceTracker:
         return self.db.get_category_performance()
 
     def get_stats_by_difficulty(self) -> pd.DataFrame:
-        """Get performance breakdown by difficulty level."""
+        """Get performance breakdown by difficulty level.
+
+        Skipped questions are excluded so accuracy and avg_time reflect
+        real attempts only.
+        """
         conn = self.db.get_connection()
         query = """
             SELECT
@@ -51,6 +55,7 @@ class PerformanceTracker:
                 CAST(SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100 as accuracy,
                 AVG(time_taken_seconds) as avg_time
             FROM questions_answered
+            WHERE was_skipped = 0
             GROUP BY difficulty
             ORDER BY
                 CASE difficulty
@@ -65,17 +70,25 @@ class PerformanceTracker:
         return df
 
     def get_historical_trend(self, days: int = 30) -> pd.DataFrame:
-        """Get daily trend over the selected number of days."""
+        """Get daily trend over the selected number of days.
+
+        Volume metrics (``questions``, ``skipped``) include skipped
+        questions on purpose - we want users to see they sat through
+        60 questions even if they skipped 10. Accuracy and timing
+        metrics exclude skips so the numbers reflect real attempts.
+        """
         conn = self.db.get_connection()
         cutoff_date = datetime.now() - timedelta(days=days)
         query = """
             SELECT
                 DATE(timestamp) as date,
                 COUNT(*) as questions,
-                SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) as correct,
-                CAST(SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100 as accuracy,
-                AVG(time_taken_seconds) as avg_time,
-                SUM(time_taken_seconds) as total_time
+                SUM(CASE WHEN was_skipped = 1 THEN 1 ELSE 0 END) as skipped,
+                SUM(CASE WHEN was_skipped = 0 AND is_correct = 1 THEN 1 ELSE 0 END) as correct,
+                CAST(SUM(CASE WHEN was_skipped = 0 AND is_correct = 1 THEN 1 ELSE 0 END) AS FLOAT)
+                    / NULLIF(SUM(CASE WHEN was_skipped = 0 THEN 1 ELSE 0 END), 0) * 100 as accuracy,
+                AVG(CASE WHEN was_skipped = 0 THEN time_taken_seconds END) as avg_time,
+                SUM(CASE WHEN was_skipped = 0 THEN time_taken_seconds ELSE 0 END) as total_time
             FROM questions_answered
             WHERE timestamp >= ?
             GROUP BY DATE(timestamp)
@@ -93,6 +106,7 @@ class PerformanceTracker:
 
         df["date"] = pd.to_datetime(df["date"])
         df["questions"] = df["questions"].fillna(0).astype(int)
+        df["skipped"] = df["skipped"].fillna(0).astype(int)
         df["accuracy"] = df["accuracy"].fillna(0.0)
         df["avg_time"] = df["avg_time"].fillna(0.0)
         df["total_time"] = df["total_time"].fillna(0.0)
@@ -103,7 +117,11 @@ class PerformanceTracker:
         return self.db.get_session_history(limit=limit, days=days)
 
     def get_time_of_day_performance(self) -> pd.DataFrame:
-        """Get performance breakdown by hour of day."""
+        """Get performance breakdown by hour of day.
+
+        Skipped questions are excluded from accuracy and avg_time so
+        the numbers reflect real attempts only.
+        """
         conn = self.db.get_connection()
         query = """
             SELECT
@@ -113,6 +131,7 @@ class PerformanceTracker:
                 CAST(SUM(CASE WHEN is_correct = 1 THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100 as accuracy,
                 AVG(time_taken_seconds) as avg_time
             FROM questions_answered
+            WHERE was_skipped = 0
             GROUP BY hour
             ORDER BY hour
         """
@@ -168,8 +187,23 @@ class PerformanceTracker:
         self.db.set_user_preference("goal_target_accuracy", f"{goals.target_accuracy:.2f}")
         self.db.set_user_preference("goal_target_avg_time", f"{goals.target_avg_time:.2f}")
 
+    # Sentinel value returned by get_goal_progress() for ``coaching_score``
+    # when the user has no activity in the lookback window. Frontend
+    # (Batch E) should detect this and render a kickoff state ("--",
+    # "Let's get started" etc.) instead of the previous scolding "0%
+    # below plan this week" message. Using None would force callers to
+    # special-case the type union; using -1 keeps the dict numerically
+    # typed and is a clear out-of-range sentinel since real coaching
+    # scores live in [0, 200].
+    COACHING_SCORE_FRESH_INSTALL: int = -1
+
     def get_goal_progress(self, lookback_days: int = 7) -> dict[str, float | int | bool]:
-        """Calculate progress against personal goals."""
+        """Calculate progress against personal goals.
+
+        Returns ``coaching_score = COACHING_SCORE_FRESH_INSTALL`` (-1)
+        when there is no activity in the lookback window, so the home
+        dashboard can show a kickoff state instead of "Goal Score 0%".
+        """
         goals = self.get_goal_settings()
         trend = self.get_historical_trend(days=lookback_days)
         recent_sessions = self.get_recent_sessions(limit=500, days=lookback_days)
@@ -192,7 +226,12 @@ class PerformanceTracker:
         accuracy_ratio = min(weighted_accuracy / max(goals.target_accuracy, 1), 2.0)
         speed_ratio = min(goals.target_avg_time / max(avg_time, 0.1), 2.0) if avg_time > 0 else 0.0
 
-        coaching_score = round((question_ratio + session_ratio + accuracy_ratio + speed_ratio) / 4 * 100, 1)
+        if questions_last_week == 0:
+            # Fresh install / dormant week: don't fabricate a 0% score.
+            # Frontend treats COACHING_SCORE_FRESH_INSTALL as "-- / kickoff".
+            coaching_score: float = float(self.COACHING_SCORE_FRESH_INSTALL)
+        else:
+            coaching_score = round((question_ratio + session_ratio + accuracy_ratio + speed_ratio) / 4 * 100, 1)
 
         return {
             "questions_last_week": questions_last_week,
