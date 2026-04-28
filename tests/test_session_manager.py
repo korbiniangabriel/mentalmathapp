@@ -255,9 +255,13 @@ class TestPersistence:
         assert rows[2]["is_correct"] == 0
         assert rows[2]["was_skipped"] == 0
 
-    def test_end_session_with_no_questions_raises(self, manager, marathon_config):
-        # Start, but never submit. Currently raises ValueError; if Batch B
-        # softens this contract, update the test.
+    def test_end_session_with_no_questions_returns_zero_summary(self, manager, marathon_config):
+        # Batch B: 0-answer abandons return a zeroed SessionSummary (and
+        # persist it) rather than raising, so the UI's quit-on-empty path
+        # doesn't crash.
         state = manager.start_session(marathon_config)
-        with pytest.raises(ValueError):
-            manager.end_session(state)
+        summary = manager.end_session(state)
+        assert summary.total_questions == 0
+        assert summary.correct_answers == 0
+        assert summary.total_score == 0
+        assert summary.results == []

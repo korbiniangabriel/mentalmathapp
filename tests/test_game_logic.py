@@ -123,7 +123,9 @@ class TestScoreCalculator:
         assert ScoreCalculator.calculate_difficulty_multiplier("easy") == 1.0
         assert ScoreCalculator.calculate_difficulty_multiplier("medium") == 1.5
         assert ScoreCalculator.calculate_difficulty_multiplier("hard") == 2.0
-        assert ScoreCalculator.calculate_difficulty_multiplier("adaptive") == 1.5
+        # Batch B: 'adaptive' is dead-code fallback (generators always emit
+        # easy/medium/hard); kept as a 1.0 no-inflation fallback.
+        assert ScoreCalculator.calculate_difficulty_multiplier("adaptive") == 1.0
         # Unknown difficulty falls back to 1.0.
         assert ScoreCalculator.calculate_difficulty_multiplier("nonsense") == 1.0
 
