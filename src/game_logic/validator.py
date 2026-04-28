@@ -35,29 +35,36 @@ class AnswerValidator:
         # Remove whitespace
         user_answer = user_answer.strip()
         correct_answer = correct_answer.strip()
-        
+
         # Exact string match
         if user_answer.lower() == correct_answer.lower():
             return True
-        
+
         # Handle percentage formats (15%, 15, 0.15)
         user_pct = AnswerValidator._extract_percentage(user_answer)
         correct_pct = AnswerValidator._extract_percentage(correct_answer)
         if user_pct is not None and correct_pct is not None:
             return abs(user_pct - correct_pct) < 0.1
-        
+
         # Handle fraction formats
         if '/' in user_answer and '/' in correct_answer:
             user_frac = AnswerValidator._parse_fraction(user_answer)
             correct_frac = AnswerValidator._parse_fraction(correct_answer)
             if user_frac is not None and correct_frac is not None:
                 return abs(user_frac - correct_frac) < 0.001
-        
-        # Numeric comparison with tolerance
+
+        # Numeric comparison with tolerance.
+        # Normalize both sides for the numeric path:
+        #  - strip a single trailing '%' so "5%" matches numeric "5"
+        #  - strip a leading '+' so "+10" matches "10"
+        #  - locale comma-as-decimal (e.g. "12,3" -> "12.3") only when there's
+        #    exactly one comma and no dot AND the right side is 1-2 digits
+        #    (mirrors the JS heuristic in practice_session.py to avoid
+        #    misreading thousands separators like "1,000").
         try:
-            user_num = float(user_answer.replace(',', ''))
-            correct_num = float(correct_answer.replace(',', ''))
-            
+            user_num = float(AnswerValidator._normalize_numeric(user_answer))
+            correct_num = float(AnswerValidator._normalize_numeric(correct_answer))
+
             # Use relative tolerance for large numbers, absolute for small
             if abs(correct_num) > 10:
                 return abs(user_num - correct_num) / abs(correct_num) < 0.01
@@ -65,31 +72,64 @@ class AnswerValidator:
                 return abs(user_num - correct_num) < 0.1
         except ValueError:
             pass
-        
+
         return False
+
+    @staticmethod
+    def _normalize_numeric(text: str) -> str:
+        """Normalize a numeric-looking string for ``float()`` parsing.
+
+        Handles, in order:
+          1. trailing '%' (so percentage-formatted input matches plain numeric)
+          2. leading '+' (so "+10" parses as 10)
+          3. comma-as-decimal heuristic: exactly one ',' and no '.', with 1-2
+             trailing digits, treat as decimal separator ("12,3" -> "12.3").
+             Otherwise fall back to stripping commas as thousands separators.
+        """
+        s = text.strip()
+        if s.endswith('%'):
+            s = s[:-1].rstrip()
+        if s.startswith('+'):
+            s = s[1:]
+        # Locale heuristic: "12,3" / "12,34" -> decimal.
+        if s.count(',') == 1 and '.' not in s:
+            left, right = s.split(',', 1)
+            if left.lstrip('-').isdigit() and right.isdigit() and 1 <= len(right) <= 2:
+                return f"{left}.{right}"
+        # Fall back: drop commas (thousands separator).
+        return s.replace(',', '')
     
     @staticmethod
     def _extract_percentage(text: str) -> float:
         """Extract percentage value from text."""
         text = text.strip()
-        
+        # Strip a leading '+' sign so "+15%" / "+15" parse the same as "15%" / "15".
+        if text.startswith('+'):
+            text = text[1:]
+
         # Remove % sign if present
         if text.endswith('%'):
             try:
-                return float(text[:-1])
+                return float(text[:-1].replace(',', '.') if (text[:-1].count(',') == 1 and '.' not in text[:-1]) else text[:-1])
             except ValueError:
                 return None
-        
+
         # Try as decimal (0.15 = 15%)
         try:
-            val = float(text)
+            # Apply the same comma-as-decimal heuristic for percentage parsing.
+            normalized = text
+            if normalized.count(',') == 1 and '.' not in normalized:
+                left, right = normalized.split(',', 1)
+                if left.lstrip('-').isdigit() and right.isdigit() and 1 <= len(right) <= 2:
+                    normalized = f"{left}.{right}"
+            val = float(normalized)
             if 0 <= val <= 1:
                 return val * 100
             elif -100 <= val <= 100:
                 return val
         except ValueError:
             pass
-        
+
         return None
     
     @staticmethod
